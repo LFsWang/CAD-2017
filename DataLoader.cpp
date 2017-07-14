@@ -104,4 +104,17 @@ void DataSet::load(std::istream &fin)
     }
 }
 
-
+void DataSet::set_spacing_on_Obstacles()
+{
+	for(s32 lay=1;lay<=metal_layers;++lay)
+	{
+		for(auto &obs:Obstacles[lay])
+		{
+			obs.first.x-=spacing;
+			obs.first.y-=spacing;
+			obs.second.x+=spacing;
+			obs.second.y+=spacing;
+		}
+	}
+	spacing=0;
+}
