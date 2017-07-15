@@ -6,7 +6,7 @@
 #include<vector>
 #include<queue>
 #include<cassert>
-std::vector<int> find_steiner_point_id(const VisingGraph &G)
+std::vector<s32> find_steiner_point_id(const VisingGraph &G)
 {
     const s64 INF = 0x3fffffffffffffffLL;
     s64 N = G.G.size();
