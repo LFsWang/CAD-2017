@@ -1,6 +1,8 @@
 #pragma once
 #include<map>
 #include<set>
+#include<tuple>
+#include<algorithm>
 
 struct Edge{
 	u32 ori_u;
@@ -30,6 +32,11 @@ struct VisingGraph{
 	std::vector<bool> is_pinv;
 	//建樹只需要N,G,edge,is_pinv
 	
+	std::vector<std::vector<u32>> ori_G;
 	std::vector<std::pair<point3D,u8>> V_set;
+	std::vector<u32> shrink_from;
+	std::vector<s64> Px;
+	std::vector<s64> Py;
 	
+	void build(const DataSet &data);
 };
