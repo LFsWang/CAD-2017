@@ -1,8 +1,10 @@
 #include"DataLoader.h"
 #include"BuildVisingGraph.h"
 #include"SwapLineP1.h"
+#include"BinaryIndexTree.h"
 
-inline void set_dis(std::vector<s64> &dis)
+template<typename T>
+inline void set_dis(T &dis)
 {
 	std::sort(dis.begin(),dis.end());
 	dis.resize(std::unique(dis.begin(),dis.end())-dis.begin());
@@ -165,11 +167,102 @@ inline void reGet_ori_P(std::vector<s64> &Px,std::vector<s64> &Py,const DataSet 
 	set_dis(Py);
 }
 
-void set_2d_VG_point(s32 l,s32 r)
+inline void set_3d_VG_point(std::vector<std::pair<u32,u32>> &S,s32 la1,s32 la2,const DataSet &data,std::vector<std::pair<u32,u32>> *P1,std::vector<s64> &Px,std::vector<s64> &Py)
 {
-	if(l==r)return;
+	struct Statement{
+		s32 type;
+		u32 a; // x
+		u32 b1;// y
+		u32 b2;
+		//1: out line
+		//2: point
+		//3: in line
+		Statement(s32 type,u32 a,u32 b1,u32 b2=0):type(type),a(a),b1(b1),b2(b2){}
+		bool operator<(const Statement &B)const{
+			return std::make_tuple(a,type)<std::make_tuple(B.a,B.type);
+		}
+	};
+	std::vector<Statement> state;
+	
+	for(const auto &i:P1[la1]) S.emplace_back(i);
+	
+	for(const auto &p:S)
+	{
+		state.emplace_back(2,p.first,p.second);
+	}
+	
+	for(const auto &o:data.Obstacles[la2])
+	{
+		u32 x1=get_dis(Px,o.first.x);
+		u32 x2=get_upper_dis(Px,o.second.x);
+		u32 y1=get_dis(Py,o.first.y);
+		u32 y2=get_upper_dis(Py,o.second.y);
+		
+		if(x1<x2&&y1<y2)
+		{
+			state.emplace_back(3,x1,y1,y2);
+			state.emplace_back(1,x2,y1,y2);
+		}
+	}
+	
+	sort(state.begin(),state.end());
+	
+	BIT ST;
+	ST.init(Py.size()+2);
+	
+	std::vector<std::pair<u32,u32>> nS;
+	
+	for(const auto &st:state)
+	{
+		switch(st.type)
+		{
+			case 1:{
+				ST.add(st.b1+1,-1);
+				ST.add(st.b2+1,1);
+				break;
+			}
+			case 2:{
+				if(ST.get_sum(st.b1+1)==0)
+				{
+					nS.emplace_back(st.a,st.b1);
+				}
+				break;
+			}
+			case 3:{
+				ST.add(st.b1+1,1);
+				ST.add(st.b2+1,-1);
+				break;
+			}
+			default:
+				cout<<"ERROR!\n";
+		}
+	}
+	
+	S.swap(nS);
+}
+
+void recursive_set_3d_VG_point(s32 l,s32 r,const DataSet &data,std::vector<std::pair<u32,u32>> *P1,std::vector<s64> &Px,std::vector<s64> &Py)
+{
+	if(l>=r)return;
 	s32 mid=(l+r)/2;
 	
+	std::vector<std::pair<u32,u32>> Lp,Rp;
+	
+	for(s32 i=l;i<mid;++i)
+	{
+		set_3d_VG_point(Lp,i,i+1,data,P1,Px,Py);
+	}
+	for(s32 i=r;i>mid;--i)
+	{
+		set_3d_VG_point(Rp,i,i-1,data,P1,Px,Py);
+	}
+	
+	for(const auto &i:Lp) P1[mid].emplace_back(i);
+	for(const auto &i:Rp) P1[mid].emplace_back(i);
+	set_dis(P1[mid]);
+	
+	recursive_set_3d_VG_point(l,mid-1,data,P1,Px,Py);
+	recursive_set_3d_VG_point(mid+1,r,data,P1,Px,Py);
 }
 
 void VisingGraph::build(const DataSet &data)
@@ -206,7 +299,15 @@ void VisingGraph::build(const DataSet &data)
 			u32 r=get_dis(Px,std::get<2>(line));
 			for(;l<=r;++l)P1[lay].emplace_back(l,y);
 		}
+		set_dis(P1[lay]);
+		cout<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
 	}
 	
+	cout<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	recursive_set_3d_VG_point(1,data.metal_layers,data,P1,Px,Py);
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		cout<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
+	}
 	
 }
