@@ -1,6 +1,7 @@
 #include"DataLoader.h"
 #include"BuildVisingGraph.h"
 #include"SwapLineP1.h"
+#include"SwapLineStatement.h"
 #include"BinaryIndexTree.h"
 
 template<typename T>
@@ -120,12 +121,12 @@ inline void get_xyLine(s32 lay,std::vector<std::tuple<s64,s64,s64>> &xLine,std::
 	
 	get_Line(yLine,state,SL,0,Px.size());
 	
-	for(auto i:xLine){
+	for(auto &i:xLine){
 		std::get<0>(i)=Px[std::get<0>(i)];
 		std::get<1>(i)=Py[std::get<1>(i)];
 		std::get<2>(i)=Py[std::get<2>(i)];
 	}
-	for(auto i:yLine){
+	for(auto &i:yLine){
 		std::get<0>(i)=Py[std::get<0>(i)];
 		std::get<1>(i)=Px[std::get<1>(i)];
 		std::get<2>(i)=Px[std::get<2>(i)];
@@ -134,6 +135,7 @@ inline void get_xyLine(s32 lay,std::vector<std::tuple<s64,s64,s64>> &xLine,std::
 
 inline void reGet_ori_P(std::vector<s64> &Px,std::vector<s64> &Py,const DataSet &data,std::vector<std::tuple<s64,s64,s64>> *xLine,std::vector<std::tuple<s64,s64,s64>> *yLine)
 {
+	
 	Px.clear();
 	Py.clear();
 	
@@ -169,20 +171,7 @@ inline void reGet_ori_P(std::vector<s64> &Px,std::vector<s64> &Py,const DataSet 
 
 inline void set_3d_VG_point(std::vector<std::pair<u32,u32>> &S,s32 la1,s32 la2,const DataSet &data,std::vector<std::pair<u32,u32>> *P1,std::vector<s64> &Px,std::vector<s64> &Py)
 {
-	struct Statement{
-		s32 type;
-		u32 a; // x
-		u32 b1;// y
-		u32 b2;
-		//1: out line
-		//2: point
-		//3: in line
-		Statement(s32 type,u32 a,u32 b1,u32 b2=0):type(type),a(a),b1(b1),b2(b2){}
-		bool operator<(const Statement &B)const{
-			return std::make_tuple(a,type)<std::make_tuple(B.a,B.type);
-		}
-	};
-	std::vector<Statement> state;
+	std::vector<Statemant_2D_VG> state;
 	
 	for(const auto &i:P1[la1]) S.emplace_back(i);
 	
@@ -193,10 +182,10 @@ inline void set_3d_VG_point(std::vector<std::pair<u32,u32>> &S,s32 la1,s32 la2,c
 	
 	for(const auto &o:data.Obstacles[la2])
 	{
-		u32 x1=get_dis(Px,o.first.x);
-		u32 x2=get_upper_dis(Px,o.second.x);
-		u32 y1=get_dis(Py,o.first.y);
-		u32 y2=get_upper_dis(Py,o.second.y);
+		s32 x1=get_dis(Px,o.first.x);
+		s32 x2=s32(get_upper_dis(Px,o.second.x))-1;
+		s32 y1=get_dis(Py,o.first.y);
+		s32 y2=get_upper_dis(Py,o.second.y);
 		
 		if(x1<x2&&y1<y2)
 		{
@@ -265,6 +254,148 @@ void recursive_set_3d_VG_point(s32 l,s32 r,const DataSet &data,std::vector<std::
 	recursive_set_3d_VG_point(mid+1,r,data,P1,Px,Py);
 }
 
+void recursive_set_2D_VG(s32 pl,s32 pr,s32 sl, s32 sr,std::vector<std::pair<u32,u32>> &S,std::vector<Statemant_2D_VG> &state,std::vector<u32> &Px,s8 is_rev=0)
+{
+	if(pl>=pr)return;
+	s32 pmid=(pl+pr)/2;
+	
+	s32 sl_mid,sr_mid;
+	
+	std::set<u32> ST;
+	for(sl_mid=sl;state[sl_mid].a<Px[pmid];++sl_mid)
+	{
+		if(state[sl_mid].type==2)
+		{
+			ST.insert(state[sl_mid].b1);
+		}
+		else
+		{
+			auto it_l=ST.lower_bound(state[sl_mid].b1);
+			auto it_r=ST.upper_bound(state[sl_mid].b2);
+			while(it_l!=it_r)
+			{
+				auto tmp=it_l++;
+				ST.erase(tmp);
+			}
+		}
+	}
+	if(is_rev)
+	{
+		for(auto i:ST)
+		{
+			S.emplace_back(i,Px[pmid]);
+		}
+	}
+	else
+	{
+		for(auto i:ST)
+		{
+			S.emplace_back(Px[pmid],i);
+		}
+	}
+	ST.clear();
+	for(sr_mid=sr;state[sr_mid].a>Px[pmid];--sr_mid)
+	{
+		if(state[sr_mid].type==2)
+		{
+			ST.insert(state[sr_mid].b1);
+		}
+		else
+		{
+			auto it_l=ST.lower_bound(state[sr_mid].b1);
+			auto it_r=ST.upper_bound(state[sr_mid].b2);
+			while(it_l!=it_r)
+			{
+				auto tmp=it_l++;
+				ST.erase(tmp);
+			}
+		}
+	}
+	if(is_rev)
+	{
+		for(auto i:ST)
+		{
+			S.emplace_back(i,Px[pmid]);
+		}
+	}
+	else
+	{
+		for(auto i:ST)
+		{
+			S.emplace_back(Px[pmid],i);
+		}
+	}
+	
+	recursive_set_2D_VG(pl,pmid-1,sl,sl_mid-1,S,state,Px,is_rev);
+	recursive_set_2D_VG(pmid+1,pr,sr_mid+1,sr,S,state,Px,is_rev);
+}
+
+inline void build_2D_VG_X(s32 lay,const DataSet &data,std::vector<std::pair<u32,u32>> *P1,std::vector<std::pair<u32,u32>> *P2,std::vector<s64> &Px,std::vector<s64> &Py)
+{
+	std::vector<Statemant_2D_VG> state;
+	
+	std::vector<u32> X;
+	
+	for(const auto &p:P1[lay])
+	{
+		state.emplace_back(2,p.first,p.second);
+		X.emplace_back(p.first);
+	}
+	
+	set_dis(X);
+	
+	for(const auto &o:data.Obstacles[lay])
+	{
+		s32 x1=get_dis(Px,o.first.x);
+		s32 x2=s32(get_upper_dis(Px,o.second.x))-1;
+		s32 y1=get_dis(Py,o.first.y);
+		s32 y2=get_upper_dis(Py,o.second.y);
+		
+		if(x1<x2&&y1<y2)
+		{
+			state.emplace_back(3,x1,y1,y2);
+			state.emplace_back(1,x2,y1,y2);
+		}
+	}
+	
+	sort(state.begin(),state.end());
+	
+	recursive_set_2D_VG(0,s32(X.size())-1,0,s32(state.size())-1,P2[lay],state,X);
+}
+
+inline void build_2D_VG_Y(s32 lay,const DataSet &data,std::vector<std::pair<u32,u32>> *P1,std::vector<std::pair<u32,u32>> *P2,std::vector<s64> &Px,std::vector<s64> &Py)
+{
+	std::vector<Statemant_2D_VG> state;
+	
+	std::vector<u32> Y;
+	
+	for(const auto &p:P1[lay])
+	{
+		state.emplace_back(2,p.second,p.first);
+		Y.emplace_back(p.second);
+	}
+	
+	set_dis(Y);
+	
+	for(const auto &o:data.Obstacles[lay])
+	{
+		s32 x1=get_dis(Px,o.first.x);
+		s32 x2=get_upper_dis(Px,o.second.x);
+		s32 y1=get_dis(Py,o.first.y);
+		s32 y2=s32(get_upper_dis(Py,o.second.y))-1;
+		
+		if(x1<x2&&y1<y2)
+		{
+			state.emplace_back(3,y1,x1,x2);
+			state.emplace_back(1,y2,x1,x2);
+		}
+	}
+	
+	sort(state.begin(),state.end());
+	
+	recursive_set_2D_VG(0,s32(Y.size())-1,0,s32(state.size())-1,P2[lay],state,Y,1);
+}
+
 void VisingGraph::build(const DataSet &data)
 {
 	static const int LIMIT_LAYER = DataSet::LIMIT_LAYER;
@@ -282,22 +413,37 @@ void VisingGraph::build(const DataSet &data)
 	reGet_ori_P(Px,Py,data,xLine,yLine);
 	
 	std::vector<std::pair<u32,u32>> P1[LIMIT_LAYER];
+	std::vector<std::pair<u32,u32>> P2[LIMIT_LAYER];
 	
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		for(const auto &line:xLine[lay])
 		{
 			u32 x=get_dis(Px,std::get<0>(line));
+			if(Px[x]<data.boundary.first.x||data.boundary.second.x<Px[x])
+				continue;
 			u32 l=get_dis(Py,std::get<1>(line));
 			u32 r=get_dis(Py,std::get<2>(line));
-			for(;l<=r;++l)P1[lay].emplace_back(x,l);
+			for(;l<=r;++l)
+			{
+				if(Py[l]<data.boundary.first.y||data.boundary.second.y<Py[l])
+					continue;
+				P1[lay].emplace_back(x,l);
+			}
 		}
 		for(const auto &line:yLine[lay])
 		{
 			u32 y=get_dis(Py,std::get<0>(line));
+			if(Py[y]<data.boundary.first.y||data.boundary.second.y<Py[y])
+				continue;
 			u32 l=get_dis(Px,std::get<1>(line));
 			u32 r=get_dis(Px,std::get<2>(line));
-			for(;l<=r;++l)P1[lay].emplace_back(l,y);
+			for(;l<=r;++l)
+			{
+				if(Px[l]<data.boundary.first.x||data.boundary.second.x<Px[l])
+					continue;
+				P1[lay].emplace_back(l,y);
+			}
 		}
 		set_dis(P1[lay]);
 		cout<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
@@ -309,5 +455,20 @@ void VisingGraph::build(const DataSet &data)
 	{
 		cout<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
 	}
+	cout<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		build_2D_VG_X(lay,data,P1,P2,Px,Py);
+		cout<<"P2["<<lay<<"].size(): "<<P2[lay].size()<<endl;
+		build_2D_VG_Y(lay,data,P1,P2,Px,Py);
+		cout<<"  P2["<<lay<<"].size(): "<<P2[lay].size()<<endl;
+		for(const auto &p:P2[lay])
+		{
+			P1[lay].emplace_back(p);
+		}
+		set_dis(P1[lay]);
+	}
+	
 	
 }
