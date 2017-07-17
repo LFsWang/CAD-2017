@@ -26,7 +26,7 @@ struct point3D{
 };
 
 struct VisingGraph{
-	int N;
+	u32 N;
 	std::vector<std::vector<u32>> G;
 	std::vector<Edge> edge;
 	std::vector<bool> is_pinv;

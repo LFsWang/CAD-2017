@@ -42,7 +42,7 @@ inline void get_ori_P(std::vector<s64> &Px,std::vector<s64> &Py,const DataSet &d
 	set_dis(Py);
 }
 
-inline void get_Line(std::vector<std::tuple<s64,s64,s64>> &line,std::vector<statementP1> &state,swape_line_P1 &SL,u32 l,u32 r)
+inline void get_Line(std::vector<Statemant_2D_VG> &line,std::vector<statementP1> &state,swape_line_P1 &SL,u32 l,u32 r)
 {
 	sort(state.begin(),state.end());
 	SL.init(r-l+1);
@@ -60,15 +60,16 @@ inline void get_Line(std::vector<std::tuple<s64,s64,s64>> &line,std::vector<stat
 			SL.find_seg(st.b1,st.b2,l,r,1);
 		}
 		SL.set_seg();
+		s32 type=st.inout>0?3:1;
 		for(const auto &seg:SL.segments)
 		{
-			line.emplace_back(st.a,seg.first,seg.second);
+			line.emplace_back(type,st.a,seg.first,seg.second,st.seg_type);
 		}
 		SL.segments.clear();
 	}
 }
 
-inline void get_xyLine(s32 lay,std::vector<std::tuple<s64,s64,s64>> &xLine,std::vector<std::tuple<s64,s64,s64>> &yLine,const DataSet &data,const std::vector<s64> &Px,const std::vector<s64> &Py)
+inline void get_xyLine(s32 lay,std::vector<Statemant_2D_VG> &xLine,std::vector<Statemant_2D_VG> &yLine,const DataSet &data,const std::vector<s64> &Px,const std::vector<s64> &Py)
 {
 	std::vector<statementP1> state;
 	swape_line_P1 SL;
@@ -80,8 +81,8 @@ inline void get_xyLine(s32 lay,std::vector<std::tuple<s64,s64,s64>> &xLine,std::
 		u32 y1=get_dis(Py,o.first.y);
 		u32 y2=get_dis(Py,o.second.y);
 		
-		state.emplace_back(x1,y1,y2, 1);
-		state.emplace_back(x2,y1,y2,-1);
+		state.emplace_back(x1,y1,y2, 1,'O');
+		state.emplace_back(x2,y1,y2,-1,'O');
 	}
 	for(auto o:data.RoutedShape[lay])
 	{
@@ -90,8 +91,8 @@ inline void get_xyLine(s32 lay,std::vector<std::tuple<s64,s64,s64>> &xLine,std::
 		u32 y1=get_dis(Py,o.first.y);
 		u32 y2=get_dis(Py,o.second.y);
 		
-		state.emplace_back(x1,y1,y2, 1);
-		state.emplace_back(x2,y1,y2,-1);
+		state.emplace_back(x1,y1,y2, 1,'S');
+		state.emplace_back(x2,y1,y2,-1,'S');
 	}
 	
 	get_Line(xLine,state,SL,0,Py.size());
@@ -105,8 +106,8 @@ inline void get_xyLine(s32 lay,std::vector<std::tuple<s64,s64,s64>> &xLine,std::
 		u32 y1=get_dis(Py,o.first.y);
 		u32 y2=get_dis(Py,o.second.y);
 		
-		state.emplace_back(y1,x1,x2, 1);
-		state.emplace_back(y2,x1,x2,-1);
+		state.emplace_back(y1,x1,x2, 1,'O');
+		state.emplace_back(y2,x1,x2,-1,'O');
 	}
 	for(auto o:data.RoutedShape[lay])
 	{
@@ -115,61 +116,69 @@ inline void get_xyLine(s32 lay,std::vector<std::tuple<s64,s64,s64>> &xLine,std::
 		u32 y1=get_dis(Py,o.first.y);
 		u32 y2=get_dis(Py,o.second.y);
 		
-		state.emplace_back(y1,x1,x2, 1);
-		state.emplace_back(y2,x1,x2,-1);
+		state.emplace_back(y1,x1,x2, 1,'S');
+		state.emplace_back(y2,x1,x2,-1,'S');
 	}
 	
 	get_Line(yLine,state,SL,0,Px.size());
-	
-	for(auto &i:xLine){
-		std::get<0>(i)=Px[std::get<0>(i)];
-		std::get<1>(i)=Py[std::get<1>(i)];
-		std::get<2>(i)=Py[std::get<2>(i)];
-	}
-	for(auto &i:yLine){
-		std::get<0>(i)=Py[std::get<0>(i)];
-		std::get<1>(i)=Px[std::get<1>(i)];
-		std::get<2>(i)=Px[std::get<2>(i)];
-	}
 }
 
-inline void reGet_ori_P(std::vector<s64> &Px,std::vector<s64> &Py,const DataSet &data,std::vector<std::tuple<s64,s64,s64>> *xLine,std::vector<std::tuple<s64,s64,s64>> *yLine)
+inline void reGet_ori_P(std::vector<s64> &Px,std::vector<s64> &Py,const DataSet &data,std::vector<Statemant_2D_VG> *xLine,std::vector<Statemant_2D_VG> *yLine)
 {
 	
-	Px.clear();
-	Py.clear();
+	std::vector<s64> nPx,nPy;
 	
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		for(const auto &i:xLine[lay])
 		{
-			Px.emplace_back(std::get<0>(i));
-			Py.emplace_back(std::get<1>(i));
-			Py.emplace_back(std::get<2>(i));
+			nPx.emplace_back(Px[i.a]);
+			nPy.emplace_back(Py[i.b1]);
+			nPy.emplace_back(Py[i.b2]);
 		}
 		
 		for(const auto &i:yLine[lay])
 		{
-			Py.emplace_back(std::get<0>(i));
-			Px.emplace_back(std::get<1>(i));
-			Px.emplace_back(std::get<2>(i));
+			nPy.emplace_back(Py[i.a]);
+			nPx.emplace_back(Px[i.b1]);
+			nPx.emplace_back(Px[i.b2]);
 		}
 		for(const auto &i:data.RoutedVia[lay])
 		{
-			Px.emplace_back(i.x);
-			Py.emplace_back(i.y);
+			nPx.emplace_back(i.x);
+			nPy.emplace_back(i.y);
 		}
 	}
-	Px.emplace_back(data.boundary.first.x);
-	Px.emplace_back(data.boundary.second.x);
-	Py.emplace_back(data.boundary.first.y);
-	Py.emplace_back(data.boundary.second.y);
+	nPx.emplace_back(data.boundary.first.x);
+	nPx.emplace_back(data.boundary.second.x);
+	nPy.emplace_back(data.boundary.first.y);
+	nPy.emplace_back(data.boundary.second.y);
 	
-	set_dis(Px);
-	set_dis(Py);
+	set_dis(nPx);
+	set_dis(nPy);
+	
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		for(auto &i:xLine[lay])
+		{
+			i.a=get_dis(nPx,Px[i.a]);
+			i.b1=get_dis(nPy,Py[i.b1]);
+			i.b2=get_dis(nPy,Py[i.b2]);
+		}
+		
+		for(auto &i:yLine[lay])
+		{
+			i.a=get_dis(nPy,Py[i.a]);
+			i.b1=get_dis(nPx,Px[i.b1]);
+			i.b2=get_dis(nPx,Px[i.b2]);
+		}
+	}
+	
+	Px.swap(nPx);
+	Py.swap(nPy);
 }
 
-inline void set_3d_VG_point(std::vector<std::pair<u32,u32>> &S,s32 la1,s32 la2,const DataSet &data,std::vector<std::pair<u32,u32>> *P1,std::vector<s64> &Px,std::vector<s64> &Py)
+inline void set_3d_VG_point(std::vector<std::pair<u32,u32>> &S,s32 la1,s32 la2,const DataSet &data,std::vector<std::pair<u32,u32>> *P1,std::vector<s64> &Px,std::vector<s64> &Py,std::vector<std::pair<u32,u32>> *P2=nullptr)
 {
 	std::vector<Statemant_2D_VG> state;
 	
@@ -228,6 +237,12 @@ inline void set_3d_VG_point(std::vector<std::pair<u32,u32>> &S,s32 la1,s32 la2,c
 	}
 	
 	S.swap(nS);
+	if(P2==nullptr) return;
+	
+	for(const auto &p:S)
+	{
+		P2[la2].emplace_back(p);
+	}
 }
 
 void recursive_set_3d_VG_point(s32 l,s32 r,const DataSet &data,std::vector<std::pair<u32,u32>> *P1,std::vector<s64> &Px,std::vector<s64> &Py)
@@ -254,6 +269,91 @@ void recursive_set_3d_VG_point(s32 l,s32 r,const DataSet &data,std::vector<std::
 	recursive_set_3d_VG_point(mid+1,r,data,P1,Px,Py);
 }
 
+/*
+void project_point_on_all_layer(s32 l,s32 r,const DataSet &data,std::vector<std::pair<u32,u32>> *P1,std::vector<std::pair<u32,u32>> *P2,std::vector<s64> &Px,std::vector<s64> &Py)
+{
+	std::vector<std::pair<u32,u32>> Lp,Rp;
+	
+	for(s32 i=l;i<r;++i)
+	{
+		set_3d_VG_point(Lp,i,i+1,data,P1,Px,Py,P2);
+	}
+	for(s32 i=r;i>l;--i)
+	{
+		set_3d_VG_point(Rp,i,i-1,data,P1,Px,Py,P2);
+	}
+}
+*/
+
+void one_way_point_project(const Statemant_2D_VG &st,std::set<u32> &ST,std::vector<std::pair<u32,u32>> &S2,u32 L,u32 R,bool is_rev=0)
+{
+	if(st.type==2)
+	{
+		ST.emplace(st.b1);
+	}
+	else
+	{
+		
+		if(st.a<L||R<st.a) return;
+		
+		auto it_l=ST.lower_bound(st.b1);
+		auto it_r=ST.upper_bound(st.b2);
+		
+		while(it_l!=it_r)
+		{
+			auto tmp=it_l++;
+			if(!is_rev)
+			{
+				S2.emplace_back(st.a,*tmp);
+			}
+			else
+			{
+				S2.emplace_back(*tmp,st.a);
+			}
+			ST.erase(tmp);
+		}
+	}
+}
+
+void single_layer_point_project(const std::vector<std::pair<u32,u32>> &S,std::vector<Statemant_2D_VG> &xLine,std::vector<Statemant_2D_VG> &yLine,std::vector<std::pair<u32,u32>> &S2,u32 x1,u32 x2,u32 y1,u32 y2)
+{
+	std::vector<Statemant_2D_VG> Xstate=xLine;
+	std::vector<Statemant_2D_VG> Ystate=yLine;
+	
+	for(const auto &p:S)
+	{
+		Xstate.emplace_back(2,p.first,p.second);
+		Ystate.emplace_back(2,p.second,p.first);
+	}
+	
+	sort(Xstate.begin(),Xstate.end());
+	sort(Ystate.begin(),Ystate.end());
+	
+	std::set<u32> ST,RST;
+	
+	for(size_t i=0;i<Xstate.size();++i)
+	{
+		size_t ri=Xstate.size()-i-1;
+		if(Xstate[i].seg_type!='B'||Xstate[i].type!=3)
+			one_way_point_project(Xstate[i],ST,S2,x1,x2);
+		if(Xstate[ri].seg_type!='B'||Xstate[ri].type!=1)
+			one_way_point_project(Xstate[ri],RST,S2,x1,x2);
+	}
+	
+	ST.clear();
+	RST.clear();
+	
+	for(size_t i=0;i<Ystate.size();++i)
+	{
+		size_t ri=Ystate.size()-i-1;
+		if(Ystate[i].seg_type!='B'||Ystate[i].type!=3)
+			one_way_point_project(Ystate[i],ST,S2,y1,y2,1);
+		if(Ystate[ri].seg_type!='B'||Ystate[ri].type!=1)
+			one_way_point_project(Ystate[ri],RST,S2,y1,y2,1);
+	}
+	
+}
+
 void recursive_set_2D_VG(s32 pl,s32 pr,s32 sl, s32 sr,std::vector<std::pair<u32,u32>> &S,std::vector<Statemant_2D_VG> &state,std::vector<u32> &Px,s8 is_rev=0)
 {
 	if(pl>=pr)return;
@@ -266,7 +366,7 @@ void recursive_set_2D_VG(s32 pl,s32 pr,s32 sl, s32 sr,std::vector<std::pair<u32,
 	{
 		if(state[sl_mid].type==2)
 		{
-			ST.insert(state[sl_mid].b1);
+			ST.emplace(state[sl_mid].b1);
 		}
 		else
 		{
@@ -298,7 +398,7 @@ void recursive_set_2D_VG(s32 pl,s32 pr,s32 sl, s32 sr,std::vector<std::pair<u32,
 	{
 		if(state[sr_mid].type==2)
 		{
-			ST.insert(state[sr_mid].b1);
+			ST.emplace(state[sr_mid].b1);
 		}
 		else
 		{
@@ -400,8 +500,8 @@ void VisingGraph::build(const DataSet &data)
 {
 	static const int LIMIT_LAYER = DataSet::LIMIT_LAYER;
 	
-	std::vector<std::tuple<s64,s64,s64>> xLine[LIMIT_LAYER];
-	std::vector<std::tuple<s64,s64,s64>> yLine[LIMIT_LAYER];
+	std::vector<Statemant_2D_VG> xLine[LIMIT_LAYER];
+	std::vector<Statemant_2D_VG> yLine[LIMIT_LAYER];
 	
 	get_ori_P(Px,Py,data);
 	
@@ -419,37 +519,82 @@ void VisingGraph::build(const DataSet &data)
 	{
 		for(const auto &line:xLine[lay])
 		{
-			u32 x=get_dis(Px,std::get<0>(line));
-			if(Px[x]<data.boundary.first.x||data.boundary.second.x<Px[x])
-				continue;
-			u32 l=get_dis(Py,std::get<1>(line));
-			u32 r=get_dis(Py,std::get<2>(line));
-			for(;l<=r;++l)
-			{
-				if(Py[l]<data.boundary.first.y||data.boundary.second.y<Py[l])
-					continue;
-				P1[lay].emplace_back(x,l);
-			}
+			u32 x=line.a;
+			u32 l=line.b1;
+			u32 r=line.b2;
+			
+			//cout<<x<<" ("<<l<<","<<r<<")\n";
+			//cout<<"----"<<Px[x]<<" ("<<Py[l]<<","<<Py[r]<<") "<<line.type<<' '<<char(line.seg_type)<<endl;
+			
+			P1[lay].emplace_back(x,l);
+			P1[lay].emplace_back(x,r);
 		}
 		for(const auto &line:yLine[lay])
 		{
-			u32 y=get_dis(Py,std::get<0>(line));
-			if(Py[y]<data.boundary.first.y||data.boundary.second.y<Py[y])
-				continue;
-			u32 l=get_dis(Px,std::get<1>(line));
-			u32 r=get_dis(Px,std::get<2>(line));
-			for(;l<=r;++l)
-			{
-				if(Px[l]<data.boundary.first.x||data.boundary.second.x<Px[l])
-					continue;
-				P1[lay].emplace_back(l,y);
-			}
+			u32 y=line.a;
+			u32 l=line.b1;
+			u32 r=line.b2;
+			
+			P1[lay].emplace_back(l,y);
+			P1[lay].emplace_back(r,y);
 		}
+		
+		for(const auto &p:data.RoutedVia[lay])
+		{
+			P1[lay].emplace_back(get_dis(Px,p.x),get_dis(Py,p.y));
+			P1[lay+1].emplace_back(get_dis(Px,p.x),get_dis(Py,p.y));
+		}
+		
 		set_dis(P1[lay]);
 		cout<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
 	}
-	
 	cout<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	
+	recursive_set_3d_VG_point(1,data.metal_layers,data,P1,Px,Py);
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		cout<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
+	}
+	cout<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	
+	
+	{
+		u32 x1=get_dis(Px,data.boundary.first.x);
+		u32 x2=get_dis(Px,data.boundary.second.x);
+		u32 y1=get_dis(Py,data.boundary.first.y);
+		u32 y2=get_dis(Py,data.boundary.second.y);
+		
+		for(s32 lay=1;lay<=data.metal_layers;++lay)
+		{
+			xLine[lay].emplace_back(1,x1,y1,y2,'B');
+			xLine[lay].emplace_back(3,x2,y1,y2,'B');
+			yLine[lay].emplace_back(1,y1,x1,x2,'B');
+			yLine[lay].emplace_back(3,y2,x1,x2,'B');
+			
+			single_layer_point_project(P1[lay],xLine[lay],yLine[lay],P2[lay],x1,x2,y1,y2);
+			for(const auto &p:P1[lay])
+			{
+				P2[lay].emplace_back(p);
+			}
+			set_dis(P2[lay]);
+			P1[lay].clear();
+			for(const auto &p:P2[lay])
+			{
+				if(x1<=p.first&&p.first<=x2&&y1<=p.second&&p.second<=y2)
+					P1[lay].emplace_back(p);
+			}
+			P2[lay].clear();
+		}
+		
+	}
+	
+	
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		cout<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
+	}
+	cout<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	
 	recursive_set_3d_VG_point(1,data.metal_layers,data,P1,Px,Py);
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
@@ -470,5 +615,14 @@ void VisingGraph::build(const DataSet &data)
 		set_dis(P1[lay]);
 	}
 	
+	/*
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		for(const auto &p:P1[lay])
+		{
+			cout<<"Via V"<<lay<<" ("<<Px[p.first]<<","<<Py[p.second]<<")\n";
+		}
+	}
+	//*/
 	
 }
