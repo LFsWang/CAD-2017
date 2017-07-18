@@ -888,7 +888,9 @@ inline void set_edge_and_graph(s64 viacost,size_t N,std::vector<std::vector<size
 		auto &e=edge[i];
 		if(e.type=='Z')
 		{
-			e.cost=viacost;
+			s64 z1=V_set[e.ori_u].layer;
+			s64 z2=V_set[e.ori_v].layer;
+			e.cost=viacost*std::abs(z1-z2);
 		}
 		else
 		{
@@ -1113,5 +1115,12 @@ void VisingGraph::build(const DataSet &data)
 	//*/
 	
 	set_edge_and_graph(data.viacost,N,G,edge,shrink_from,Px,Py,V_set);
+	
+	s64 cost=0;
+	for(size_t i=0;i<edge.size();i+=2)
+	{
+		cost+=edge[i].cost;
+	}
+	cout<<cost<<endl;
 	
 }
