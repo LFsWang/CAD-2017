@@ -779,6 +779,135 @@ inline void build_2D_edge(const DataSet &data,const std::vector<size_t> &shrink_
 	}
 }
 
+inline void build_via_edge_swap_line(s32 la1,std::vector<Statemant_2D_VG> &state_la2,std::vector<std::tuple<u32,u32,size_t>> *V,std::vector<std::tuple<u32,u32,s32>> &P,std::map<std::pair<u32,u32>,s32> &res,u32 bit_size)
+{
+	for(const auto &p:P)
+	{
+		state_la2.emplace_back(2,std::get<0>(p),std::get<1>(p),std::get<2>(p));
+	}
+	
+	P.clear();
+	res.clear();
+	
+	for(const auto &p:V[la1])
+	{
+		state_la2.emplace_back(2,std::get<0>(p),std::get<1>(p),la1);
+	}
+	
+	sort(state_la2.begin(),state_la2.end());
+	
+	BIT ST;
+	ST.init(bit_size+2);
+	
+	for(const auto &st:state_la2)
+	{
+		switch(st.type)
+		{
+			case 1:{
+				ST.add(st.b1+1,-1);
+				ST.add(st.b2+2,1);
+				break;
+			}
+			case 2:{
+				if(ST.get_sum(st.b1+1)==0)
+				{
+					res[{st.a,st.b1}]=st.b2;
+				}
+				break;
+			}
+			case 3:{
+				ST.add(st.b1+1,1);
+				ST.add(st.b2+2,-1);
+				break;
+			}
+			default:
+				cout<<"ERROR!\n";
+		}
+	}
+}
+
+inline void build_via_edge(const DataSet &data,const std::vector<size_t> &shrink_from,std::vector<std::tuple<u32,u32,size_t>> *V,std::vector<s64> &Px,std::vector<s64> &Py,std::vector<Edge> &edge,const std::vector<point3D> &V_set)
+{
+	std::vector<std::tuple<u32,u32,s32>> P;
+	std::map<std::pair<u32,u32>,s32> res;
+	
+	for(s32 lay=2;lay<=data.metal_layers;++lay)
+	{
+		std::vector<Statemant_2D_VG> state;
+		for(const auto &o:data.Obstacles[lay])
+		{
+			s32 x1=get_upper_dis(Px,o.first.x);
+			s32 x2=s32(get_upper_dis(Px,o.second.x))-1;
+			s32 y1=get_upper_dis(Py,o.first.y);
+			s32 y2=s32(get_upper_dis(Py,o.second.y))-1;
+			
+			if(x2>=0&&Px[x2]==o.second.x)--x2;
+			if(y2>=0&&Py[y2]==o.second.y)--y2;
+			
+			if(x1<=x2&&y1<=y2)
+			{
+				state.emplace_back(3,x1,y1,y2);
+				state.emplace_back(1,x2,y1,y2);
+			}
+		}
+		
+		build_via_edge_swap_line(lay-1,state,V,P,res,Py.size());
+				
+		for(const auto &p:V[lay])
+		{
+			auto it=res.find({std::get<0>(p),std::get<1>(p)});
+			if(it!=res.end())
+			{
+				point3D P3D1(it->first.first,it->first.second,it->second);
+				size_t p1=get_dis(V_set,P3D1);
+				size_t p2=std::get<2>(p);
+				if(shrink_from[p1]!=shrink_from[p2])
+				{
+					edge.emplace_back(p1,p2,'Z');
+					edge.emplace_back(p2,p1,'Z');
+				}
+				res.erase(it);
+			}
+		}
+		
+		for(const auto &p:res)
+		{
+			P.emplace_back(p.first.first,p.first.second,p.second);
+		}
+		
+	}
+}
+
+inline void set_edge_and_graph(s64 viacost,size_t N,std::vector<std::vector<size_t>> &G,std::vector<Edge> &edge,const std::vector<size_t> &shrink_from,std::vector<s64> &Px,std::vector<s64> &Py,const std::vector<point3D> &V_set)
+{
+	G.clear();
+	G.resize(N);
+	
+	for(size_t i=0;i<edge.size();++i)
+	{
+		auto &e=edge[i];
+		if(e.type=='Z')
+		{
+			e.cost=viacost;
+		}
+		else
+		{
+			s64 x1=Px[V_set[e.ori_u].x];
+			s64 x2=Px[V_set[e.ori_v].x];
+			s64 y1=Py[V_set[e.ori_u].y];
+			s64 y2=Py[V_set[e.ori_v].y];
+			e.cost=std::abs(x1-x2)+std::abs(y1-y2);
+		}
+		
+		e.u=shrink_from[e.ori_u];
+		e.v=shrink_from[e.ori_v];
+		
+		if(e.u==e.v)cout<<"error!\n";
+		
+		G[e.u].emplace_back(i);
+		
+	}
+}
 
 void VisingGraph::build(const DataSet &data)
 {
@@ -968,4 +1097,21 @@ void VisingGraph::build(const DataSet &data)
 		cout<<edge[i].type<<"-line M"<<V_set[edge[i].ori_u].layer<<" ("<<Px[V_set[edge[i].ori_u].x]<<","<<Py[V_set[edge[i].ori_u].y]<<") ("<<Px[V_set[edge[i].ori_v].x]<<","<<Py[V_set[edge[i].ori_v].y]<<")\n";
 	}
 	//*/
+	
+	build_via_edge(data,shrink_from,V,Px,Py,edge,V_set);
+	
+	/*
+	for(size_t i=0;i<edge.size();i+=2)
+	{
+		if(edge[i].type=='Z'){
+			cout<<"Via V"<<V_set[edge[i].ori_u].layer<<" ("<<Px[V_set[edge[i].ori_u].x]<<","<<Py[V_set[edge[i].ori_u].y]<<")\n";
+		}
+		else{
+			cout<<edge[i].type<<"-line M"<<V_set[edge[i].ori_u].layer<<" ("<<Px[V_set[edge[i].ori_u].x]<<","<<Py[V_set[edge[i].ori_u].y]<<") ("<<Px[V_set[edge[i].ori_v].x]<<","<<Py[V_set[edge[i].ori_v].y]<<")\n";
+		}
+	}
+	//*/
+	
+	set_edge_and_graph(data.viacost,N,G,edge,shrink_from,Px,Py,V_set);
+	
 }
