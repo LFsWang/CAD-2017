@@ -3,6 +3,7 @@
 #include"SwapLineP1.h"
 #include"SwapLineStatement.h"
 #include"BinaryIndexTree.h"
+#include"DisjoinSet.h"
 
 template<typename T>
 inline void set_dis(T &dis)
@@ -10,11 +11,13 @@ inline void set_dis(T &dis)
 	std::sort(dis.begin(),dis.end());
 	dis.resize(std::unique(dis.begin(),dis.end())-dis.begin());
 }
-inline u32 get_dis(const std::vector<s64> &dis,s64 val)
+template<typename T>
+inline u32 get_dis(const std::vector<T> &dis,const T &val)
 {
 	return std::lower_bound(dis.begin(),dis.end(),val)-dis.begin();
 }
-inline u32 get_upper_dis(const std::vector<s64> &dis,s64 val)
+template<typename T>
+inline u32 get_upper_dis(const std::vector<T> &dis,const T &val)
 {
 	return std::upper_bound(dis.begin(),dis.end(),val)-dis.begin();
 }
@@ -196,7 +199,7 @@ inline void set_3d_VG_point(std::vector<std::pair<u32,u32>> &S,s32 la1,s32 la2,c
 		s32 y1=get_dis(Py,o.first.y);
 		s32 y2=get_upper_dis(Py,o.second.y);
 		
-		if(x1<x2&&y1<y2)
+		if(x1<=x2&&y1<y2)
 		{
 			state.emplace_back(3,x1,y1,y2);
 			state.emplace_back(1,x2,y1,y2);
@@ -449,9 +452,9 @@ inline void build_2D_VG_X(s32 lay,const DataSet &data,std::vector<std::pair<u32,
 		s32 x1=get_dis(Px,o.first.x);
 		s32 x2=s32(get_upper_dis(Px,o.second.x))-1;
 		s32 y1=get_dis(Py,o.first.y);
-		s32 y2=get_upper_dis(Py,o.second.y);
+		s32 y2=s32(get_upper_dis(Py,o.second.y))-1;
 		
-		if(x1<x2&&y1<y2)
+		if(x1<=x2&&y1<=y2)
 		{
 			state.emplace_back(3,x1,y1,y2);
 			state.emplace_back(1,x2,y1,y2);
@@ -480,11 +483,11 @@ inline void build_2D_VG_Y(s32 lay,const DataSet &data,std::vector<std::pair<u32,
 	for(const auto &o:data.Obstacles[lay])
 	{
 		s32 x1=get_dis(Px,o.first.x);
-		s32 x2=get_upper_dis(Px,o.second.x);
+		s32 x2=s32(get_upper_dis(Px,o.second.x))-1;
 		s32 y1=get_dis(Py,o.first.y);
 		s32 y2=s32(get_upper_dis(Py,o.second.y))-1;
 		
-		if(x1<x2&&y1<y2)
+		if(x1<=x2&&y1<=y2)
 		{
 			state.emplace_back(3,y1,x1,x2);
 			state.emplace_back(1,y2,x1,x2);
@@ -495,6 +498,287 @@ inline void build_2D_VG_Y(s32 lay,const DataSet &data,std::vector<std::pair<u32,
 	
 	recursive_set_2D_VG(0,s32(Y.size())-1,0,s32(state.size())-1,P2[lay],state,Y,1);
 }
+
+inline void put_the_point_number(s32 metal_layers,std::vector<point3D> &V_set,std::vector<std::tuple<u32,u32,size_t>> *V,std::vector<std::pair<u32,u32>> *P1)
+{
+	for(s32 lay=1;lay<=metal_layers;++lay)
+	{
+		for(const auto &p:P1[lay])
+		{
+			V_set.emplace_back(p.first,p.second,lay);
+		}
+	}
+	set_dis(V_set);
+	
+	for(s32 lay=1;lay<=metal_layers;++lay)
+	{
+		for(const auto &p:P1[lay])
+		{
+			V[lay].emplace_back(p.first,p.second,get_dis(V_set,point3D(p.first,p.second,lay)));
+		}
+		P1[lay]=std::vector<std::pair<u32,u32>>();
+	}
+}
+
+inline void merge_same_via_point(DisjoinSet &DST,const DataSet &data,const std::vector<point3D> &V_set,const std::vector<s64> &Px,const std::vector<s64> &Py)
+{
+	for(s32 lay=1;lay<data.metal_layers;++lay)
+	{
+		for(const auto &p:data.RoutedVia[lay])
+		{
+			u32 x=get_dis(Px,p.x);
+			u32 y=get_dis(Py,p.y);
+			
+			point3D P3D1(x,y,lay);
+			point3D P3D2(x,y,lay+1);
+			
+			size_t p1=get_dis(V_set,P3D1);
+			size_t p2=get_dis(V_set,P3D2);
+			
+			if(!(V_set[p1]==P3D1))cout<<"GGGGGGGGGGGGGGGGGGGGGGGGG\n";
+			if(!(V_set[p2]==P3D2))cout<<"JJJJJJJJJJJJJJJJJJJJJJJJJ\n";
+			
+			DST.U(p1,p2);
+		}
+	}
+}
+
+inline void set_shape_point(std::vector<bool> &ori_is_P,const DataSet &data,const std::vector<point3D> &V_set,const std::vector<s64> &Px,const std::vector<s64> &Py)
+{
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		for(const auto &o:data.RoutedShape[lay])
+		{
+			u32 x1=get_dis(Px,o.first.x);
+			u32 x2=get_dis(Px,o.second.x);
+			u32 y1=get_dis(Py,o.first.y);
+			u32 y2=get_dis(Py,o.second.y);
+			
+			point3D P3D1(x1,y1,lay);
+			point3D P3D2(x1,y2,lay);
+			point3D P3D3(x2,y1,lay);
+			point3D P3D4(x2,y2,lay);
+			
+			size_t p1=get_dis(V_set,P3D1);
+			size_t p2=get_dis(V_set,P3D2);
+			size_t p3=get_dis(V_set,P3D3);
+			size_t p4=get_dis(V_set,P3D4);
+			
+			if(p1<V_set.size()&&V_set[p1]==P3D1)
+				ori_is_P[p1]=true;
+			if(p2<V_set.size()&&V_set[p2]==P3D2)
+				ori_is_P[p2]=true;
+			if(p3<V_set.size()&&V_set[p3]==P3D3)
+				ori_is_P[p3]=true;
+			if(p4<V_set.size()&&V_set[p4]==P3D4)
+				ori_is_P[p4]=true;
+		}
+	}
+}
+
+inline void merge_shape_point_swap_line(s32 lay,DisjoinSet &DST,std::vector<Statemant_2D_VG> &state,const std::vector<point3D> &V_set,u32 bit_size,bool is_rev=0)
+{
+	sort(state.begin(),state.end());
+	
+	std::map<u32,u32> ST;
+	
+	BIT BIST;
+	BIST.init(bit_size+2);
+	
+	for(const auto &st:state)
+	{
+		if(st.type==2)
+		{
+			auto it=ST.find(st.b1);
+			if(it!=ST.end()&&BIST.get_sum(st.b1+1))
+			{
+				point3D P3D1(it->second,it->first,lay);
+				point3D P3D2(st.a,st.b1,lay);
+				
+				if(is_rev)
+				{
+					std::swap(P3D1.x,P3D1.y);
+					std::swap(P3D2.x,P3D2.y);
+				}
+				
+				size_t p1=get_dis(V_set,P3D1);
+				size_t p2=get_dis(V_set,P3D2);
+				
+				if(!(V_set[p1]==P3D1))cout<<"GGGGGGGGGGGGGGGGGGGGGGGGG\n";
+				if(!(V_set[p2]==P3D2))cout<<"JJJJJJJJJJJJJJJJJJJJJJJJJ\n";
+				
+				DST.U(p1,p2);
+			}
+			ST[st.b1]=st.a;
+		}
+		else
+		{
+			if(st.type==1)
+			{
+				BIST.add(st.b1+1,1);
+				BIST.add(st.b2+2,-1);
+			}
+			else
+			{
+				BIST.add(st.b1+1,-1);
+				BIST.add(st.b2+2,1);
+			}
+			auto it_l=ST.lower_bound(st.b1);
+			auto it_r=ST.upper_bound(st.b2);
+			while(it_l!=it_r)
+			{
+				auto tmp=it_l++;
+				ST.erase(tmp);
+			}
+		}
+	}
+	
+}
+
+inline void merge_same_shape_point(DisjoinSet &DST,std::vector<Statemant_2D_VG> *xLine,std::vector<Statemant_2D_VG> *yLine,std::vector<std::tuple<u32,u32,size_t>> *V,const std::vector<point3D> &V_set,const std::vector<s64> &Px,const std::vector<s64> &Py,s32 metal_layers)
+{
+	for(s32 lay=1;lay<=metal_layers;++lay)
+	{
+		std::vector<Statemant_2D_VG> Xstate;
+		std::vector<Statemant_2D_VG> Ystate;
+		
+		for(const auto &st:xLine[lay])
+		{
+			if(st.seg_type!='S') continue;
+			s32 type=st.type==3?1:3;
+			Xstate.emplace_back(type,st.a,st.b1,st.b2,'S');
+		}
+		for(const auto &st:yLine[lay])
+		{
+			if(st.seg_type!='S') continue;
+			s32 type=st.type==3?1:3;
+			Ystate.emplace_back(type,st.a,st.b1,st.b2,'S');
+		}
+		
+		for(const auto &p:V[lay])
+		{
+			Xstate.emplace_back(2,std::get<0>(p),std::get<1>(p));
+			Ystate.emplace_back(2,std::get<1>(p),std::get<0>(p));
+		}
+		
+		merge_shape_point_swap_line(lay,DST,Xstate,V_set,Py.size());
+		merge_shape_point_swap_line(lay,DST,Ystate,V_set,Px.size(),1);
+	}
+}
+
+inline size_t shrink_point(std::vector<size_t> &shrink_from,std::vector<bool> &is_pinv,std::vector<bool> &ori_is_P,DisjoinSet &DST,size_t sz)
+{
+	shrink_from.resize(sz);
+	
+	for(size_t i=0;i<sz;++i)
+	{
+		shrink_from[i]=DST.find(i);
+	}
+	
+	std::vector<size_t> tmp=shrink_from;
+	set_dis(tmp);
+	
+	is_pinv.resize(tmp.size());
+	
+	for(size_t i=0;i<sz;++i)
+	{
+		shrink_from[i]=get_dis(tmp,shrink_from[i]);
+		is_pinv[shrink_from[i]] = is_pinv[shrink_from[i]] || ori_is_P[i];
+	}
+	
+	return tmp.size();
+}
+
+inline void build_2D_edge_swape_line(s32 lay,const std::vector<size_t> &shrink_from,std::vector<Statemant_2D_VG> &state,const std::vector<point3D> &V_set,std::vector<Edge> &edge,bool is_rev=0)
+{
+	sort(state.begin(),state.end());
+	
+	std::map<u32,u32> ST;
+	
+	for(const auto &st:state)
+	{
+		if(st.type==2)
+		{
+			auto it=ST.find(st.b1);
+			if(it!=ST.end())
+			{
+				point3D P3D1(it->second,it->first,lay);
+				point3D P3D2(st.a,st.b1,lay);
+				
+				u8 edge_type='H';
+				if(is_rev)
+				{
+					std::swap(P3D1.x,P3D1.y);
+					std::swap(P3D2.x,P3D2.y);
+					edge_type='V';
+				}
+				
+				size_t p1=get_dis(V_set,P3D1);
+				size_t p2=get_dis(V_set,P3D2);
+				
+				if(!(V_set[p1]==P3D1))cout<<"GGGGGGGGGGGGGGGGGGGGGGGGG\n";
+				if(!(V_set[p2]==P3D2))cout<<"JJJJJJJJJJJJJJJJJJJJJJJJJ\n";
+				
+				if(shrink_from[p1]!=shrink_from[p2])
+				{
+					edge.emplace_back(p1,p2,edge_type);
+					edge.emplace_back(p2,p1,edge_type);
+				}
+			}
+			ST[st.b1]=st.a;
+		}
+		else
+		{
+			auto it_l=ST.lower_bound(st.b1);
+			auto it_r=ST.upper_bound(st.b2);
+			while(it_l!=it_r)
+			{
+				auto tmp=it_l++;
+				ST.erase(tmp);
+			}
+		}
+	}
+	
+}
+
+inline void build_2D_edge(const DataSet &data,const std::vector<size_t> &shrink_from,std::vector<std::tuple<u32,u32,size_t>> *V,std::vector<s64> &Px,std::vector<s64> &Py,std::vector<Edge> &edge,const std::vector<point3D> &V_set)
+{
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		std::vector<Statemant_2D_VG> Xstate;
+		std::vector<Statemant_2D_VG> Ystate;
+		
+		for(const auto &p:V[lay])
+		{
+			Xstate.emplace_back(2,std::get<0>(p),std::get<1>(p));
+			Ystate.emplace_back(2,std::get<1>(p),std::get<0>(p));
+		}
+
+		for(const auto &o:data.Obstacles[lay])
+		{
+			s32 x1=get_upper_dis(Px,o.first.x);
+			s32 x2=s32(get_upper_dis(Px,o.second.x))-1;
+			s32 y1=get_upper_dis(Py,o.first.y);
+			s32 y2=s32(get_upper_dis(Py,o.second.y))-1;
+			
+			if(x2>=0&&Px[x2]==o.second.x)--x2;
+			if(y2>=0&&Py[y2]==o.second.y)--y2;
+			
+			if(x1<=x2&&y1<=y2)
+			{
+				Xstate.emplace_back(3,x1,y1,y2);
+				Xstate.emplace_back(1,x2,y1,y2);
+				
+				Ystate.emplace_back(3,y1,x1,x2);
+				Ystate.emplace_back(1,y2,x1,x2);
+			}
+		}
+		
+		build_2D_edge_swape_line(lay,shrink_from,Xstate,V_set,edge);
+		build_2D_edge_swape_line(lay,shrink_from,Ystate,V_set,edge,1);
+	}
+}
+
 
 void VisingGraph::build(const DataSet &data)
 {
@@ -613,7 +897,10 @@ void VisingGraph::build(const DataSet &data)
 			P1[lay].emplace_back(p);
 		}
 		set_dis(P1[lay]);
+		
+		P2[lay]=std::vector<std::pair<u32,u32>>();
 	}
+	cout<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
 	
 	/*
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
@@ -625,4 +912,60 @@ void VisingGraph::build(const DataSet &data)
 	}
 	//*/
 	
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		cout<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
+	}
+	cout<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	
+	std::vector<std::tuple<u32,u32,size_t>> V[LIMIT_LAYER];
+	put_the_point_number(data.metal_layers,V_set,V,P1);
+	
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		cout<<"V["<<lay<<"].size(): "<<V[lay].size()<<endl;
+	}
+	cout<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	
+	DisjoinSet DST(V_set.size());
+	
+	std::vector<bool> ori_is_P(V_set.size());
+	
+	merge_same_via_point(DST,data,V_set,Px,Py);
+	set_shape_point(ori_is_P,data,V_set,Px,Py);
+	merge_same_shape_point(DST,xLine,yLine,V,V_set,Px,Py,data.metal_layers);
+	
+	/*
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		for(const auto &p:V[lay])
+		{
+			if(DST.size(std::get<2>(p))>1)
+			cout<<"Via V"<<lay<<" ("<<Px[std::get<0>(p)]<<","<<Py[std::get<1>(p)]<<")\n";
+		}
+	}
+	//*/
+	
+	N = shrink_point(shrink_from,is_pinv,ori_is_P,DST,V_set.size());
+	cout<<N<<' '<<V_set.size()<<endl;
+	
+	/*
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		for(const auto &p:V[lay])
+		{
+			if(shrink_from[std::get<2>(p)]==12)
+			cout<<"Via V"<<lay<<" ("<<Px[std::get<0>(p)]<<","<<Py[std::get<1>(p)]<<")\n";
+		}
+	}
+	//*/
+	
+	build_2D_edge(data,shrink_from,V,Px,Py,edge,V_set);
+	
+	/*
+	for(size_t i=0;i<edge.size();i+=2)
+	{
+		cout<<edge[i].type<<"-line M"<<V_set[edge[i].ori_u].layer<<" ("<<Px[V_set[edge[i].ori_u].x]<<","<<Py[V_set[edge[i].ori_u].y]<<") ("<<Px[V_set[edge[i].ori_v].x]<<","<<Py[V_set[edge[i].ori_v].y]<<")\n";
+	}
+	//*/
 }

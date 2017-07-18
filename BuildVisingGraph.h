@@ -5,36 +5,42 @@
 #include<algorithm>
 
 struct Edge{
-	u32 ori_u;
-	u32 ori_v;
+	size_t ori_u;
+	size_t ori_v;
 	u8 type;
 	//建樹只需要u,v,cost
-	u32 u;
-	u32 v;
+	size_t u;
+	size_t v;
 	u64 cost;
+	Edge(size_t ori_u,size_t ori_v,u8 type):ori_u(ori_u),ori_v(ori_v),type(type){}
 };
 
 struct point3D{
-	s64 x;
-	s64 y;
+	u32 x;
+	u32 y;
 	u32 layer;
+	point3D(){}
+	point3D(u32 x,u32 y,u32 z):x(x),y(y),layer(z){}
 	bool operator<(const point3D &b)const{
+		if(layer!=b.layer)return layer<b.layer;
 		if(x!=b.x)return x<b.x;
-		if(y!=b.y)return y<b.y;
-		return layer<b.layer;
+		return y<b.y;
+	}
+	bool operator==(const point3D &b)const{
+		return x==b.x&&y==b.y&&layer==b.layer;
 	}
 };
 
 struct VisingGraph{
-	u32 N;
-	std::vector<std::vector<u32>> G;
+	size_t N;
+	std::vector<std::vector<size_t>> G;
 	std::vector<Edge> edge;
 	std::vector<bool> is_pinv;
 	//建樹只需要N,G,edge,is_pinv
 	
 	std::vector<std::vector<u32>> ori_G;
-	std::vector<std::pair<point3D,u8>> V_set;
-	std::vector<u32> shrink_from;
+	std::vector<point3D> V_set;
+	std::vector<size_t> shrink_from;
 	std::vector<s64> Px;
 	std::vector<s64> Py;
 	
