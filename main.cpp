@@ -34,7 +34,7 @@ std::vector<u64> find_steiner_point_id(const VisingGraph &G)
             pq.push(i,0);
             dist[i] = 0;
             //cout<<"ping:"<<i<<endl;
-            cout<<pq.size()<<endl;
+            //cout<<pq.size()<<endl;
         }
     }
 
