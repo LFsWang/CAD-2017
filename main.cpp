@@ -5,24 +5,23 @@
 
 #include<functional>
 #include<vector>
-#include<queue>
 #include<cassert>
-std::vector<s32> find_steiner_point_id(const VisingGraph &G)
+std::vector<u64> find_steiner_point_id(const VisingGraph &G)
 {
+    const u64 INVLID = std::numeric_limits<u64>::max();
     const s64 INF = 0x3fffffffffffffffLL;
-    s64 N = G.G.size();
+    u64 N = G.G.size();
     auto &V = G.G;
 
     std::vector<s64> dist(N,INF);
-    std::vector<s32> stack;
-    std::vector<s32> steiner_point_id;
+    std::vector<u64> stack;
+    std::vector<u64> steiner_point_id;
     DisjoinSet ds(N);
 
-    using node = std::pair<s64,s32>;
     using min_heap = MinHeap<s64>;
     min_heap pq(N);
 
-    for(s32 i=0;i<N;++i)
+    for(u64 i=0;i<N;++i)
     {
         if( G.is_pinv[i] )
         {
@@ -31,12 +30,12 @@ std::vector<s32> find_steiner_point_id(const VisingGraph &G)
         }
     }
 
-    for(s32 T=0;T<N-1;++T)
+    for(u64 T=0;T<N-1;++T)
     {
-        s32 traget = -1;
+        u64 traget = INVLID;
         while( !pq.empty() )
         {
-            s32 v,e;
+            u64 v,e;
             s64 cost;
             std::tie(v,std::ignore) = pq.top();
             pq.pop();
@@ -46,7 +45,7 @@ std::vector<s32> find_steiner_point_id(const VisingGraph &G)
                 traget = v;
                 break;
             }
-            for( s32 eid:V[v] )
+            for( u64 eid:V[v] )
             {
                 e = G.edge[eid].v;
                 cost = G.edge[eid].cost;
@@ -59,13 +58,13 @@ std::vector<s32> find_steiner_point_id(const VisingGraph &G)
                 }
             }
         }
-        assert(traget!=-1);
+        assert(traget!=INVLID);
         //merge sp path to source
         stack.clear();
         stack.emplace_back(traget);
         while( !stack.empty() )
         {
-            s32 v = stack.back();
+            u64 v = stack.back();
             stack.pop_back();
             if( !G.is_pinv[v] )// paper 3-3
                 steiner_point_id.push_back(v);
@@ -73,9 +72,9 @@ std::vector<s32> find_steiner_point_id(const VisingGraph &G)
             if( dist[v]==0 )//reach face of conpoment
                 continue;
 
-            for( s32 eid:V[v] )
+            for( u64 eid:V[v] )
             {
-                s32 e = G.edge[eid].v;
+                u64 e = G.edge[eid].v;
                 s64 cost = G.edge[eid].cost;
                 if( dist[v] == dist[e]+cost && !ds.same(v,e) )
                 {
@@ -86,7 +85,7 @@ std::vector<s32> find_steiner_point_id(const VisingGraph &G)
         }
         //reset pq
         pq.clear();
-        for(s32 i=0;i<N;++i)
+        for(u64 i=0;i<N;++i)
         {
             if( G.is_pinv[i] || ds.size(i)!=1 )
             {
