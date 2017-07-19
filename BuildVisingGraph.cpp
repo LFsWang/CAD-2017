@@ -337,9 +337,9 @@ void single_layer_point_project(const std::vector<std::pair<u32,u32>> &S,std::ve
 	for(size_t i=0;i<Xstate.size();++i)
 	{
 		size_t ri=Xstate.size()-i-1;
-		if(Xstate[i].seg_type!='B'||Xstate[i].type!=3)
+		//if(Xstate[i].seg_type!='B'||Xstate[i].type!=3)
 			one_way_point_project(Xstate[i],ST,S2,x1,x2);
-		if(Xstate[ri].seg_type!='B'||Xstate[ri].type!=1)
+		//if(Xstate[ri].seg_type!='B'||Xstate[ri].type!=1)
 			one_way_point_project(Xstate[ri],RST,S2,x1,x2);
 	}
 	
@@ -349,9 +349,9 @@ void single_layer_point_project(const std::vector<std::pair<u32,u32>> &S,std::ve
 	for(size_t i=0;i<Ystate.size();++i)
 	{
 		size_t ri=Ystate.size()-i-1;
-		if(Ystate[i].seg_type!='B'||Ystate[i].type!=3)
+		//if(Ystate[i].seg_type!='B'||Ystate[i].type!=3)
 			one_way_point_project(Ystate[i],ST,S2,y1,y2,1);
-		if(Ystate[ri].seg_type!='B'||Ystate[ri].type!=1)
+		//if(Ystate[ri].seg_type!='B'||Ystate[ri].type!=1)
 			one_way_point_project(Ystate[ri],RST,S2,y1,y2,1);
 	}
 	
@@ -912,7 +912,7 @@ inline void set_edge_and_graph(s64 viacost,size_t N,std::vector<std::vector<size
 }
 
 void VisingGraph::build(const DataSet &data)
-{
+{	
 	static const int LIMIT_LAYER = DataSet::LIMIT_LAYER;
 	
 	std::vector<Statemant_2D_VG> xLine[LIMIT_LAYER];
@@ -961,16 +961,16 @@ void VisingGraph::build(const DataSet &data)
 		}
 		
 		set_dis(P1[lay]);
-		cout<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
+		//cout<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
 	}
-	cout<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	//cout<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
 	
 	recursive_set_3d_VG_point(1,data.metal_layers,data,P1,Px,Py);
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
-		cout<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
+		//cout<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
 	}
-	cout<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	//cout<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
 	
 	
 	{
@@ -981,10 +981,12 @@ void VisingGraph::build(const DataSet &data)
 		
 		for(s32 lay=1;lay<=data.metal_layers;++lay)
 		{
+			/*
 			xLine[lay].emplace_back(1,x1,y1,y2,'B');
 			xLine[lay].emplace_back(3,x2,y1,y2,'B');
 			yLine[lay].emplace_back(1,y1,x1,x2,'B');
 			yLine[lay].emplace_back(3,y2,x1,x2,'B');
+			*/
 			
 			single_layer_point_project(P1[lay],xLine[lay],yLine[lay],P2[lay],x1,x2,y1,y2);
 			for(const auto &p:P1[lay])
@@ -1003,26 +1005,40 @@ void VisingGraph::build(const DataSet &data)
 		
 	}
 	
+	/*
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		for(const auto &p:P1[lay])
+		{
+			if(lay==1)
+			cout<<"Via V"<<lay<<" ("<<Px[p.first]<<","<<Py[p.second]<<")\n";
+		}
+	}
+	//*/
 	
+	/*
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		cout<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
 	}
 	cout<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	//*/
 	
 	recursive_set_3d_VG_point(1,data.metal_layers,data,P1,Px,Py);
+	/*
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		cout<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
 	}
 	cout<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	//*/
 	
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		build_2D_VG_X(lay,data,P1,P2,Px,Py);
-		cout<<"P2["<<lay<<"].size(): "<<P2[lay].size()<<endl;
+		//cout<<"P2["<<lay<<"].size(): "<<P2[lay].size()<<endl;
 		build_2D_VG_Y(lay,data,P1,P2,Px,Py);
-		cout<<"  P2["<<lay<<"].size(): "<<P2[lay].size()<<endl;
+		//cout<<"  P2["<<lay<<"].size(): "<<P2[lay].size()<<endl;
 		for(const auto &p:P2[lay])
 		{
 			P1[lay].emplace_back(p);
@@ -1031,32 +1047,37 @@ void VisingGraph::build(const DataSet &data)
 		
 		P2[lay]=std::vector<std::pair<u32,u32>>();
 	}
-	cout<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	//cout<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
 	
 	/*
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		for(const auto &p:P1[lay])
 		{
+			if(lay==1)
 			cout<<"Via V"<<lay<<" ("<<Px[p.first]<<","<<Py[p.second]<<")\n";
 		}
 	}
 	//*/
 	
+	/*
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		cout<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
 	}
-	cout<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	cout<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";\
+	//*/
 	
 	std::vector<std::tuple<u32,u32,size_t>> V[LIMIT_LAYER];
 	put_the_point_number(data.metal_layers,V_set,V,P1);
 	
+	/*
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		cout<<"V["<<lay<<"].size(): "<<V[lay].size()<<endl;
 	}
 	cout<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	//*/
 	
 	DisjoinSet DST(V_set.size());
 	
@@ -1078,7 +1099,7 @@ void VisingGraph::build(const DataSet &data)
 	//*/
 	
 	N = shrink_point(shrink_from,is_pinv,ori_is_P,DST,V_set.size());
-	cout<<N<<' '<<V_set.size()<<endl;
+	//cout<<N<<' '<<V_set.size()<<endl;
 	
 	/*
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
@@ -1102,14 +1123,15 @@ void VisingGraph::build(const DataSet &data)
 	
 	build_via_edge(data,shrink_from,V,Px,Py,edge,V_set);
 	
-	/*
+	//*
 	for(size_t i=0;i<edge.size();i+=2)
 	{
 		if(edge[i].type=='Z'){
+			if(V_set[edge[i].ori_v].layer-V_set[edge[i].ori_u].layer>1)
 			cout<<"Via V"<<V_set[edge[i].ori_u].layer<<" ("<<Px[V_set[edge[i].ori_u].x]<<","<<Py[V_set[edge[i].ori_u].y]<<")\n";
 		}
 		else{
-			cout<<edge[i].type<<"-line M"<<V_set[edge[i].ori_u].layer<<" ("<<Px[V_set[edge[i].ori_u].x]<<","<<Py[V_set[edge[i].ori_u].y]<<") ("<<Px[V_set[edge[i].ori_v].x]<<","<<Py[V_set[edge[i].ori_v].y]<<")\n";
+			//cout<<edge[i].type<<"-line M"<<V_set[edge[i].ori_u].layer<<" ("<<Px[V_set[edge[i].ori_u].x]<<","<<Py[V_set[edge[i].ori_u].y]<<") ("<<Px[V_set[edge[i].ori_v].x]<<","<<Py[V_set[edge[i].ori_v].y]<<")\n";
 		}
 	}
 	//*/
@@ -1121,6 +1143,6 @@ void VisingGraph::build(const DataSet &data)
 	{
 		cost+=edge[i].cost;
 	}
-	cout<<cost<<endl;
+	//cout<<cost<<endl;
 	
 }

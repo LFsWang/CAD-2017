@@ -106,6 +106,10 @@ void DataSet::load(std::istream &fin)
 
 void DataSet::set_spacing_on_Obstacles()
 {
+	boundary.first.x+=spacing;
+	boundary.first.y+=spacing;
+	boundary.second.x-=spacing;
+	boundary.second.y-=spacing;
 	for(s32 lay=1;lay<=metal_layers;++lay)
 	{
 		for(auto &obs:Obstacles[lay])
