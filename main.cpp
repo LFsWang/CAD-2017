@@ -1,6 +1,7 @@
 #include "DataLoader.h"
 #include "BuildVisingGraph.h"
 #include "DisjoinSet.h"
+#include "MinHeap.h"
 
 #include<functional>
 #include<vector>
@@ -18,14 +19,14 @@ std::vector<s32> find_steiner_point_id(const VisingGraph &G)
     DisjoinSet ds(N);
 
     using node = std::pair<s64,s32>;
-    using min_heap = std::priority_queue<node,std::vector<node>,std::greater<node>>;
-    min_heap pq;
+    using min_heap = MinHeap<s64>;
+    min_heap pq(N);
 
     for(s32 i=0;i<N;++i)
     {
         if( G.is_pinv[i] )
         {
-            pq.emplace(0,i);
+            pq.push(i,0);
             dist[i] = 0;
         }
     }
@@ -37,7 +38,7 @@ std::vector<s32> find_steiner_point_id(const VisingGraph &G)
         {
             s32 v,e;
             s64 cost;
-            std::tie(std::ignore,v) = pq.top();
+            std::tie(v,std::ignore) = pq.top();
             pq.pop();
             //promise no 0-w edge between pin point
             if( dist[v]!=0 && G.is_pinv[v] )
@@ -54,7 +55,7 @@ std::vector<s32> find_steiner_point_id(const VisingGraph &G)
                 if( dist[e] > dist[v]+cost )
                 {
                     dist[e] = cost;
-                    pq.emplace(cost,e);
+                    pq.push(e,cost);
                 }
             }
         }
@@ -84,13 +85,13 @@ std::vector<s32> find_steiner_point_id(const VisingGraph &G)
             }
         }
         //reset pq
-        pq = min_heap();//hack for clear
+        pq.clear();
         for(s32 i=0;i<N;++i)
         {
             if( G.is_pinv[i] || ds.size(i)!=1 )
             {
                 dist[i] = 0;
-                pq.emplace(0,i);
+                pq.push(i,0);
             }
             else
             {
