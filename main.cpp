@@ -111,10 +111,10 @@ std::vector<u64> find_steiner_point_id(const VisingGraph &G)
 
 inline void showclock(const char *str=nullptr)
 {
-    u64 time = std::clock();
-    u64 ms = time%1000; time/=1000;
-    u64 sec = time%60;  time/=60;
-    u64 min = time%60;  time/=60;
+    long long time = std::clock();
+    long long ms = time%1000; time/=1000;
+    long long sec = time%60;  time/=60;
+    long long min = time%60;  time/=60;
     if(str)printf("%s ,",str);
     printf("Time: %2llu:%02llu:%02llu %03llu\n",time,min,sec,ms);
 }
