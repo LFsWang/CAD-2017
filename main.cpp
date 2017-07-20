@@ -9,104 +9,127 @@
 #include<cassert>
 #include<iostream>
 #include<cstdio>
+#include<tuple>
 
 using std::cout;
 using std::endl;
-std::vector<u64> find_steiner_point_id(const VisingGraph &G)
+std::vector<std::size_t> select_edge(const VisingGraph &G)
 {
-    const u64 INVLID = std::numeric_limits<u64>::max();
-    const s64 INF = 0x3fffffffffffffffLL;
-    u64 N = G.G.size();
+    using sz_t = std::size_t;
+    const sz_t INVLID = std::numeric_limits<sz_t>::max();
+    const u64 INF = 0x3fffffffffffffffLL;
+    static_assert( INF <= std::numeric_limits<decltype(INF)>::max()/2 ,"Invlid inf!");
+
+    sz_t N = G.G.size();
     auto &V = G.G;
+    sz_t tmp_ping = INVLID;
+    sz_t tmp_ping_num = 0;
 
-    std::vector<s64> dist(N,INF);
-    std::vector<u64> stack;
-    std::vector<u64> steiner_point_id;
-    DisjoinSet ds(N);
+    std::vector<u64>  dist(N,INF);
+    std::vector<sz_t> prev_eid(N,INVLID);
+    std::vector<sz_t> index(N,INVLID);
+    MinHeap<u64> mh(N);
 
-    using min_heap = MinHeap<s64>;
-    min_heap pq(N);
-//cout<<"N="<<N<<'\n';
-    for(u64 i=0;i<N;++i)
-    {
+    for(sz_t i=0;i<N;++i)
         if( G.is_pinv[i] )
         {
-            pq.push(i,0);
             dist[i] = 0;
-            //cout<<"ping:"<<i<<endl;
-            //cout<<pq.size()<<endl;
+            mh.push(i,0);
+            index[i]=i;
+            tmp_ping = i;
+            tmp_ping_num++;
         }
-    }
-
-    for(u64 T=0;T<N-1;++T)
+    u64 d;
+    sz_t v;
+    while( !mh.empty() )
     {
-        u64 traget = INVLID;
-        while( !pq.empty() )
+        std::tie(v,d) = mh.top();
+        mh.pop();
+        for(sz_t eid:V[v])
         {
-            u64 v,e;
-            s64 cost;
-            std::tie(v,cost) = pq.top();
-            pq.pop();//cout<<"view"<<v<<' '<<cost<<endl;
-            //promise no 0-w edge between pin point
-            if( dist[v]!=0 && G.is_pinv[v] )
-            {
-                traget = v;
-                break;
-            }
-            for( u64 eid:V[v] )
-            {
-                e = G.edge[eid].v;
-                cost = G.edge[eid].cost;
-                if( ds.same(v,e) )//inside merged conpoment
-                    cost = 0;
-                if( dist[e] > dist[v]+cost )
-                {
-                    dist[e] = cost;
-                    pq.push(e,cost);
-                }
-            }
-        }//cout<<"N="<<traget<<'\n';
-        assert(traget!=INVLID);
-        //merge sp path to source
-        stack.clear();
-        stack.emplace_back(traget);
-        while( !stack.empty() )
-        {
-            u64 v = stack.back();
-            stack.pop_back();
-            if( !G.is_pinv[v] )// paper 3-3
-                steiner_point_id.push_back(v);
+            sz_t e = G.edge[eid].v;
+            u64 cost = G.edge[eid].cost;
 
-            if( dist[v]==0 )//reach face of conpoment
-                continue;
-
-            for( u64 eid:V[v] )
+            if( dist[e] > dist[v]+cost )
             {
-                u64 e = G.edge[eid].v;
-                s64 cost = G.edge[eid].cost;
-                if( dist[v] == dist[e]+cost && !ds.same(v,e) )
-                {
-                    ds.U(v,e);
-                    stack.emplace_back(e);
-                }
-            }
-        }
-        //reset pq
-        pq.clear();
-        for(u64 i=0;i<N;++i)
-        {
-            if( G.is_pinv[i] || ds.size(i)!=1 )
-            {
-                dist[i] = 0;
-                pq.push(i,0);
-            }
-            else
-            {
-                dist[i] = INF;
+                dist[e] = dist[v]+cost;
+                prev_eid[e] = eid;
+                index[e] = index[v];
+                mh.push(e,dist[e]);
             }
         }
     }
-    return steiner_point_id;
+    //for(sz_t i=0;i<N;++i)assert(dist[i]!=INF);
+    DisjoinSet tmpds(N);
+    std::vector< std::tuple<u64,sz_t> > CrossEdge;
+    {
+        sz_t eid=0;
+        for(const Edge &E:G.edge)
+        {
+            tmpds.U(E.u,E.v);
+            if( index[E.u]!=index[E.v] && E.u > E.v )
+            {
+                CrossEdge.emplace_back( dist[E.u]+dist[E.v]+E.cost , eid );
+            }
+            eid++;
+        }
+    }
+    std::sort(CrossEdge.begin(),CrossEdge.end());
+    std::cout<<"Compment 0 SZ:"<<tmpds.size(0)<<",G.N: "<<G.N<<std::endl;
+
+    std::vector<sz_t> SelectKEdge;
+    DisjoinSet ds(N);
+    for(const auto &TUS:CrossEdge)
+    {
+        sz_t eid;
+        std::tie(std::ignore,eid) = TUS;
+        const auto &E = G.edge[eid];
+        if( !ds.same(index[E.u],index[E.v]) )
+        {
+            SelectKEdge.emplace_back(eid);
+            ds.U(index[E.u],index[E.v]);
+            //cout<<"Sel Cross Edge for "<<index[E.u]<<'-'<<dist[E.v]<<" is "<<eid<<endl;
+        }
+    }
+
+    std::vector<bool> used(G.edge.size(),false);
+    auto &FinalEdge = CrossEdge;
+
+    FinalEdge.clear();
+    for(sz_t eid:SelectKEdge)
+    {
+        FinalEdge.emplace_back(G.edge[eid].cost,eid);
+        for(int t=0;t<2;++t)
+        {
+            sz_t v = (t&1)?G.edge[eid].u:G.edge[eid].v;
+            //cout<<v;
+            while( v!=index[v] && !used[prev_eid[v]] )
+            {   //cout<<"->"<<G.edge[prev_eid[v]].u;
+                used[prev_eid[v]] = true;
+                FinalEdge.emplace_back(G.edge[prev_eid[v]].cost,prev_eid[v]);
+                v = G.edge[prev_eid[v]].u;
+            }//cout<<endl;
+        }
+    }
+
+    std::sort(FinalEdge.begin(),FinalEdge.end());
+    ds.init(G.edge.size());
+    SelectKEdge.clear();
+    for(const auto &TUS:CrossEdge)
+    {
+        sz_t eid;
+        std::tie(std::ignore,eid) = TUS;
+        const auto &E = G.edge[eid];
+        if( !ds.same(E.u,E.v) )
+        {
+            SelectKEdge.emplace_back(eid);
+            ds.U(E.u,E.v);
+        }
+    }
+    //DEBUG CODE
+    std::cout<<"Ping Disjoin Size:"<<ds.size(tmp_ping)<<std::endl;
+    std::cout<<"All ping :"<<tmp_ping_num<<std::endl;
+    return SelectKEdge;
 }
 
 inline void showclock(const char *str=nullptr)
@@ -123,11 +146,16 @@ int main(int argc,char *argv[])
 {
     DataSet d;
     std::ifstream fin;
+    std::ofstream fout;
     if( argc>1 )
         fin.open(argv[1]);
     else
         fin.open("a.in");
     
+    if( argc>2 )
+        fout.open(argv[2]);
+    else
+        fout.open("ans.out");
     if( !fin.is_open() )
     {
         std::cout<<"Open Input File fail!"<<std::endl;
@@ -143,6 +171,19 @@ int main(int argc,char *argv[])
 	v.build(d);
     showclock("VisingGraph build");
 
-	std::vector<u64> res=find_steiner_point_id(v);
-    showclock("find_steiner_point_id");
+	std::vector<std::size_t> res=select_edge(v);
+    showclock("select_edge");
+    //*
+    for(auto it:res)
+	{
+        auto i=it%2?it^1:it;
+		if(v.edge[i].type=='Z'){
+			for(auto lay=v.V_set[v.edge[i].ori_u].layer;lay<v.V_set[v.edge[i].ori_v].layer;++lay)
+			fout<<"Via V"<<lay<<" ("<<v.Px[v.V_set[v.edge[i].ori_u].x]<<","<<v.Py[v.V_set[v.edge[i].ori_u].y]<<")\n";
+		}
+		else{
+			fout<<v.edge[i].type<<"-line M"<<v.V_set[v.edge[i].ori_u].layer<<" ("<<v.Px[v.V_set[v.edge[i].ori_u].x]<<","<<v.Py[v.V_set[v.edge[i].ori_u].y]<<") ("<<v.Px[v.V_set[v.edge[i].ori_v].x]<<","<<v.Py[v.V_set[v.edge[i].ori_v].y]<<")\n";
+		}
+	}
+    //*/
 }
