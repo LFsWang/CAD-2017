@@ -126,4 +126,9 @@ public:
     {
         return tree.empty();
     }
+
+    u64 size()
+    {
+        return tree.size();
+    }
 };
