@@ -74,7 +74,7 @@ inline void get_Line(std::vector<Statemant_2D_VG> &line,std::vector<statementP1>
 
 inline void get_xyLine(s32 lay,std::vector<Statemant_2D_VG> &xLine,std::vector<Statemant_2D_VG> &yLine,const DataSet &data,const std::vector<s64> &Px,const std::vector<s64> &Py)
 {
-	std::vector<statementP1> state;
+	std::vector<statementP1> Xstate,Ystate;
 	swape_line_P1 SL;
 	
 	for(auto o:data.Obstacles[lay])
@@ -84,8 +84,10 @@ inline void get_xyLine(s32 lay,std::vector<Statemant_2D_VG> &xLine,std::vector<S
 		u32 y1=get_dis(Py,o.first.y);
 		u32 y2=get_dis(Py,o.second.y);
 		
-		state.emplace_back(x1,y1,y2, 1,'O');
-		state.emplace_back(x2,y1,y2,-1,'O');
+		Xstate.emplace_back(x1,y1,y2, 1,'O');
+		Xstate.emplace_back(x2,y1,y2,-1,'O');
+		Ystate.emplace_back(y1,x1,x2, 1,'O');
+		Ystate.emplace_back(y2,x1,x2,-1,'O');
 	}
 	for(auto o:data.RoutedShape[lay])
 	{
@@ -94,36 +96,14 @@ inline void get_xyLine(s32 lay,std::vector<Statemant_2D_VG> &xLine,std::vector<S
 		u32 y1=get_dis(Py,o.first.y);
 		u32 y2=get_dis(Py,o.second.y);
 		
-		state.emplace_back(x1,y1,y2, 1,'S');
-		state.emplace_back(x2,y1,y2,-1,'S');
+		Xstate.emplace_back(x1,y1,y2, 1,'S');
+		Xstate.emplace_back(x2,y1,y2,-1,'S');
+		Ystate.emplace_back(y1,x1,x2, 1,'S');
+		Ystate.emplace_back(y2,x1,x2,-1,'S');
 	}
 	
-	get_Line(xLine,state,SL,0,Py.size());
-	
-	
-	state.clear();
-	for(auto o:data.Obstacles[lay])
-	{
-		u32 x1=get_dis(Px,o.first.x);
-		u32 x2=get_dis(Px,o.second.x);
-		u32 y1=get_dis(Py,o.first.y);
-		u32 y2=get_dis(Py,o.second.y);
-		
-		state.emplace_back(y1,x1,x2, 1,'O');
-		state.emplace_back(y2,x1,x2,-1,'O');
-	}
-	for(auto o:data.RoutedShape[lay])
-	{
-		u32 x1=get_dis(Px,o.first.x);
-		u32 x2=get_dis(Px,o.second.x);
-		u32 y1=get_dis(Py,o.first.y);
-		u32 y2=get_dis(Py,o.second.y);
-		
-		state.emplace_back(y1,x1,x2, 1,'S');
-		state.emplace_back(y2,x1,x2,-1,'S');
-	}
-	
-	get_Line(yLine,state,SL,0,Px.size());
+	get_Line(xLine,Xstate,SL,0,Py.size());
+	get_Line(yLine,Ystate,SL,0,Px.size());
 }
 
 inline void reGet_ori_P(std::vector<s64> &Px,std::vector<s64> &Py,const DataSet &data,std::vector<Statemant_2D_VG> *xLine,std::vector<Statemant_2D_VG> *yLine)
@@ -1063,7 +1043,16 @@ void VisingGraph::build(const DataSet &data)
 	{
 		get_xyLine(lay,xLine[lay],yLine[lay],data,Px,Py);
 	}
-	
+	/*
+	for(s32 lay=1;lay<=data.metal_layers;++lay){
+		for(auto l:yLine[lay])
+		{
+			if(l.seg_type=='S'){
+				cout<<"H-line M"<<lay<<" ("<<Px[l.b1]<<","<<Py[l.a]<<") ("<<Px[l.b2]<<","<<Py[l.a]<<")\n";
+			}
+		}
+	}
+	//*/
 	reGet_ori_P(Px,Py,data,xLine,yLine);
 	
 	std::vector<std::pair<u32,u32>> P1[LIMIT_LAYER];
@@ -1281,6 +1270,7 @@ void VisingGraph::build(const DataSet &data)
 	}
 	//*/
 	
+	
 	set_edge_and_graph(data.viacost,N,G,edge,shrink_from,Px,Py,V_set);
 	//*
 	s64 cost=0;
@@ -1292,7 +1282,7 @@ void VisingGraph::build(const DataSet &data)
 	
 	u32 cnt=0;
 	std::vector<size_t> tmd,tmd2;
-	for(int i=0;i<is_pinv.size();++i)if(is_pinv[i])tmd.push_back(i),++cnt;
+	for(size_t i=0;i<is_pinv.size();++i)if(is_pinv[i])tmd.push_back(i),++cnt;
 	for(auto p:V[1]){
 		if(get_dis(tmd,std::get<2>(p))<tmd.size()&&tmd[get_dis(tmd,std::get<2>(p))]==std::get<2>(p))tmd2.push_back(std::get<2>(p));
 	}
