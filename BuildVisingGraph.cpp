@@ -288,7 +288,7 @@ void recursive_set_3d_VG_point(s32 l,s32 r,const DataSet &data,std::vector<std::
 	recursive_set_3d_VG_point(mid+1,r,data,P1,Px,Py);
 }
 
-/*
+//*
 void project_point_on_all_layer(s32 l,s32 r,const DataSet &data,std::vector<std::pair<u32,u32>> *P1,std::vector<std::pair<u32,u32>> *P2,std::vector<s64> &Px,std::vector<s64> &Py)
 {
 	std::vector<std::pair<u32,u32>> Lp,Rp;
@@ -302,7 +302,7 @@ void project_point_on_all_layer(s32 l,s32 r,const DataSet &data,std::vector<std:
 		set_3d_VG_point(Rp,i,i-1,data,P1,Px,Py,P2);
 	}
 }
-*/
+//*/
 	
 void one_way_point_project_swap_line(const Statemant_2D_VG &st,std::set<u32> &ST,std::vector<std::pair<u32,u32>> &S2,u32 L,u32 R,bool is_rev=0)
 {
@@ -1160,7 +1160,9 @@ void VisingGraph::build(const DataSet &data)
 	std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
 	//*/
 	
-	recursive_set_3d_VG_point(1,data.metal_layers,data,P1,Px,Py);
+	//recursive_set_3d_VG_point(1,data.metal_layers,data,P1,Px,Py);
+	project_point_on_all_layer(1,data.metal_layers,data,P1,P2,Px,Py);// insert more point
+	
 	//*
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
@@ -1201,7 +1203,7 @@ void VisingGraph::build(const DataSet &data)
 	
 	build_2D_VG_point(data,P1,P2,Px,Py);
 	
-	point_project_to_XYLine(P1,P2,data,xLine,yLine,Px,Py);//add more point, delete OK
+	//point_project_to_XYLine(P1,P2,data,xLine,yLine,Px,Py);//add more point, delete OK
 	
 	/*
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
