@@ -113,7 +113,7 @@ std::vector<std::size_t> select_edge(const VisingGraph &G)
     }
 
     std::sort(FinalEdge.begin(),FinalEdge.end());
-    ds.init(G.edge.size());
+    ds.init(N);
     SelectKEdge.clear();
     for(const auto &TUS:CrossEdge)
     {
