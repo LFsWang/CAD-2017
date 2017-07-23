@@ -173,6 +173,8 @@ int main(int argc,char *argv[])
 
 	std::vector<std::size_t> res=select_edge(v);
     showclock("select_edge");
+	
+	for(int _=0;_<7;++_)
     //*
     for(auto it:res)
 	{

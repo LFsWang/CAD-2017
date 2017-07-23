@@ -215,7 +215,7 @@ inline void set_3d_VG_point(std::vector<std::pair<u32,u32>> &S,s32 la1,s32 la2,c
 		s32 y1=get_dis(Py,o.first.y);
 		s32 y2=get_upper_dis(Py,o.second.y);
 		
-		if(x1<=x2&&y1<y2)
+		if(o.first.x!=o.second.x&&x1<=x2&&y1<y2)
 		{
 			state.emplace_back(3,x1,y1,y2);
 			state.emplace_back(1,x2,y1,y2);
@@ -1203,7 +1203,7 @@ void VisingGraph::build(const DataSet &data)
 	
 	build_2D_VG_point(data,P1,P2,Px,Py);
 	
-	//point_project_to_XYLine(P1,P2,data,xLine,yLine,Px,Py);//add more point, delete OK
+	point_project_to_XYLine(P1,P2,data,xLine,yLine,Px,Py);//add more point, delete OK
 	
 	/*
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
