@@ -10,9 +10,35 @@
 #include<iostream>
 #include<cstdio>
 #include<tuple>
+#include<unordered_set>
+#include<stack>
 
 using std::cout;
 using std::endl;
+
+inline void showclock(const char *str=nullptr)
+{
+#ifdef _WIN32
+    long long CL_PER_SEC = 1000;
+#else
+    long long CL_PER_SEC = 1000000;//test on centos
+#endif
+    static long long last = 0;
+    auto show_time = [&](long long time){
+        long long ms = time%CL_PER_SEC; time/=CL_PER_SEC;
+        long long sec = time%60;  time/=60;
+        long long min = time%60;  time/=60;
+        printf("%2llu:%02llu:%02llu %06llu",time,min,sec,ms);
+    };
+    
+    long long now = std::clock();
+    if(str)printf("%s ,",str);
+    printf("Time:");show_time(now);printf("\t(");
+    long long diff = now - last;
+    show_time(diff);printf(")\n");
+    last = now;
+}
+
 std::vector<std::size_t> select_edge(const VisingGraph &G)
 {
     using sz_t = std::size_t;
@@ -59,7 +85,8 @@ std::vector<std::size_t> select_edge(const VisingGraph &G)
             }
         }
     }
-    //for(sz_t i=0;i<N;++i)assert(dist[i]!=INF);
+    showclock(" :Dijkstra");
+
     DisjoinSet tmpds(N);
     std::vector< std::tuple<u64,sz_t> > CrossEdge;
     {
@@ -76,6 +103,7 @@ std::vector<std::size_t> select_edge(const VisingGraph &G)
     }
     std::sort(CrossEdge.begin(),CrossEdge.end());
     std::cout<<"Compment 0 SZ:"<<tmpds.size(0)<<",G.N: "<<G.N<<std::endl;
+    showclock(" :Find CrossEdge");
 
     std::vector<sz_t> SelectKEdge;
     DisjoinSet ds(N);
@@ -88,10 +116,9 @@ std::vector<std::size_t> select_edge(const VisingGraph &G)
         {
             SelectKEdge.emplace_back(eid);
             ds.U(index[E.u],index[E.v]);
-            //cout<<"Sel Cross Edge for "<<index[E.u]<<'-'<<dist[E.v]<<" is "<<eid<<endl;
         }
     }
-
+    showclock(" :Kruskal 1");
     std::vector<bool> used(G.edge.size(),false);
     auto &FinalEdge = CrossEdge;
 
@@ -102,16 +129,20 @@ std::vector<std::size_t> select_edge(const VisingGraph &G)
         for(int t=0;t<2;++t)
         {
             sz_t v = (t&1)?G.edge[eid].u:G.edge[eid].v;
-            //cout<<v;
             while( v!=index[v] && !used[prev_eid[v]] )
-            {   //cout<<"->"<<G.edge[prev_eid[v]].u;
+            {
                 used[prev_eid[v]] = true;
                 FinalEdge.emplace_back(G.edge[prev_eid[v]].cost,prev_eid[v]);
                 v = G.edge[prev_eid[v]].u;
-            }//cout<<endl;
+            }
         }
     }
+    showclock(" :Recover Edge");
 
+    auto &deg = dist;
+    std::fill(deg.begin(),deg.end(),0);
+    std::unordered_set<int> used_eid;
+    
     std::sort(FinalEdge.begin(),FinalEdge.end());
     ds.init(N);
     SelectKEdge.clear();
@@ -122,28 +153,63 @@ std::vector<std::size_t> select_edge(const VisingGraph &G)
         const auto &E = G.edge[eid];
         if( !ds.same(E.u,E.v) )
         {
+            used_eid.insert(eid);
+            deg[E.u]++;
+            deg[E.v]++;
             SelectKEdge.emplace_back(eid);
             ds.U(E.u,E.v);
         }
     }
+    showclock(" :Kruskal 2");
+
+    std::stack<sz_t> stack;
+    for(sz_t i=0;i<N;++i)
+    {
+        if( !G.is_pinv[i] && deg[i]==1 )
+        {
+            deg[i]--;
+            stack.emplace(i);
+        }
+    }
+
+    std::cout<<"Before reduce E="<<used_eid.size()<<",stack hold:"<<stack.size()<<std::endl;
+    while( !stack.empty() )
+    {
+        sz_t v = stack.top();
+        stack.pop();
+
+        //find the edge to delete
+        for(sz_t eid:V[v])
+        {
+            if( used_eid.find(eid) == used_eid.end() )
+                continue;
+            used_eid.erase(eid);
+
+            auto e = G.edge[eid].v;
+            deg[ e ]--;
+            if( deg[ e ]==0 && !G.is_pinv[e] )
+                stack.emplace(e);
+        }
+    }
+    SelectKEdge.clear();
+    std::copy(used_eid.begin(),used_eid.end(),std::back_inserter(SelectKEdge));
+    std::cout<<"After reduce E="<<SelectKEdge.size()<<std::endl;
+    showclock(" :Reduce Edge");
     //DEBUG CODE
     std::cout<<"Ping Disjoin Size:"<<ds.size(tmp_ping)<<std::endl;
     std::cout<<"All ping :"<<tmp_ping_num<<std::endl;
     return SelectKEdge;
 }
 
-inline void showclock(const char *str=nullptr)
-{
-    long long time = std::clock();
-    long long ms = time%1000000; time/=1000000;//test on centos
-    long long sec = time%60;  time/=60;
-    long long min = time%60;  time/=60;
-    if(str)printf("%s ,",str);
-    printf("Time: %2llu:%02llu:%02llu %06llu\n",time,min,sec,ms);
-}
-
 int main(int argc,char *argv[])
 {
+    //show compile info
+    std::cout<<"JINKELA NET_OPEN_FINDER"<<std::endl;
+    std::cout<<"Compile time:"<<__DATE__<<' '<<__TIME__<<std::endl;
+#ifdef __GNUC__
+    std::cout<<"G++ version: "<<__VERSION__<<endl;
+#endif
+    std::cout<<"======================================"<<endl;
     DataSet d;
     std::ifstream fin;
     std::ofstream fout;
@@ -188,4 +254,5 @@ int main(int argc,char *argv[])
 		}
 	}
     //*/
+    showclock("DONE!!!");
 }

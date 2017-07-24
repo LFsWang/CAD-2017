@@ -12,13 +12,11 @@ class MinHeap
     const sz_t INVLID = std::numeric_limits<sz_t>::max();
 
     sz_t max_size;
-    std::vector<T> tree;
-    std::vector<sz_t> id;
+    std::vector<std::pair<sz_t,T>> tree;
     std::vector<sz_t> id_to_pos;
     void swap_node(int a,int b)
     {
-        std::swap( id_to_pos[id[a]] , id_to_pos[id[b]] );
-        std::swap( id[a] , id[b] );
+        std::swap( id_to_pos[tree[a].first] , id_to_pos[tree[b].first] );
         std::swap( tree[a] , tree[b] );
     }
 
@@ -44,7 +42,7 @@ class MinHeap
 
     void up(sz_t id)
     {
-        while( id && tree[father(id)] > tree[id] )
+        while( id && tree[father(id)].second > tree[id].second )
         {
             swap_node(id,father(id));
             id = father(id);
@@ -56,9 +54,9 @@ class MinHeap
         sz_t target;
         while( idok( target = lchild(id) ) )
         {
-            if( idok( rchild(id) ) && tree[target] > tree[rchild(id)] )
+            if( idok( rchild(id) ) && tree[target].second > tree[rchild(id)].second )
                 target = rchild(id);
-            if( tree[id] > tree[target] )
+            if( tree[id].second > tree[target].second )
             {
                 swap_node(id,target);
                 id = target;
@@ -83,16 +81,15 @@ public:
             return ;
         }
         id_to_pos[index] = tree.size();
-        tree.emplace_back(val);
-        id.push_back(index);
+        tree.emplace_back(index,val);
         up(id_to_pos[index]);
     }
 
     void update(sz_t index,vl_t val)
     {
         sz_t tid = id_to_pos[index];
-        bool isless = val < tree[tid] ? true : false;
-        tree[tid] = val;
+        bool isless = val < tree[tid].second ? true : false;
+        tree[tid].second = val;
 
         if( isless ) up(tid);
         else  down(tid);
@@ -100,16 +97,14 @@ public:
 
     std::pair<sz_t,vl_t> top()
     {
-        return std::make_pair(id[0],tree[0]);
+        return tree[0];
     }
 
     void pop()
     {
-        id_to_pos[ id[0] ] = INVLID;
-        id[0] = id.back();
+        id_to_pos[ tree[0].first ] = INVLID;
         tree[0] = tree.back();
 
-        id.pop_back();
         tree.pop_back();
         if( !tree.empty() )
             down(0);
@@ -118,7 +113,6 @@ public:
     void clear()
     {
         for(auto &v:id_to_pos) v = INVLID;
-        id.clear();
         tree.clear();
     }
 

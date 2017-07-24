@@ -1,0 +1,4 @@
+./net_open_finder INPUT OUTPUT
+
+if INPUT is empty, it will read a.in
+if OUTPUT is empty, it will write a.out
