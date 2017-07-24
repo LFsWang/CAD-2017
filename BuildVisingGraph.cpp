@@ -721,9 +721,28 @@ inline void merge_shape_point_swap_line(s32 lay,DisjoinSet &DST,std::vector<Stat
 			if(st.type==1)continue;
 			auto it_l=ST.lower_bound(st.b1);
 			auto it_r=ST.upper_bound(st.b2);
+			
+			point3D P3D1(it_l->second,it_l->first,lay);
+			if(is_rev)
+			{
+				std::swap(P3D1.x,P3D1.y);
+			}
+			size_t p1=get_dis(V_set,P3D1);
+			
 			while(it_l!=it_r)
 			{
 				auto tmp=it_l++;
+				
+				point3D P3D2(tmp->second,tmp->first,lay);
+				if(is_rev)
+				{
+					std::swap(P3D2.x,P3D2.y);
+				}
+				size_t p2=get_dis(V_set,P3D2);
+				if(!(V_set[p1]==P3D1))std::cerr<<"Error V_set[p1]!=P3D1\n";
+				if(!(V_set[p2]==P3D2))std::cerr<<"Error V_set[p2]!=P3D2\n";
+				DST.U(p1,p2);
+				
 				ST.erase(tmp);
 			}
 		}
@@ -777,9 +796,28 @@ inline void merge_shape_point_swap_line(s32 lay,DisjoinSet &DST,std::vector<Stat
 			if(st.type==3)continue;
 			auto it_l=ST.lower_bound(st.b1);
 			auto it_r=ST.upper_bound(st.b2);
+			
+			point3D P3D1(it_l->second,it_l->first,lay);
+			if(is_rev)
+			{
+				std::swap(P3D1.x,P3D1.y);
+			}
+			size_t p1=get_dis(V_set,P3D1);
+			
 			while(it_l!=it_r)
 			{
 				auto tmp=it_l++;
+				
+				point3D P3D2(tmp->second,tmp->first,lay);
+				if(is_rev)
+				{
+					std::swap(P3D2.x,P3D2.y);
+				}
+				size_t p2=get_dis(V_set,P3D2);
+				if(!(V_set[p1]==P3D1))std::cerr<<"Error V_set[p1]!=P3D1\n";
+				if(!(V_set[p2]==P3D2))std::cerr<<"Error V_set[p2]!=P3D2\n";
+				DST.U(p1,p2);
+				
 				ST.erase(tmp);
 			}
 		}
