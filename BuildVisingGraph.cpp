@@ -5,6 +5,34 @@
 #include"BinaryIndexTree.h"
 #include"DisjoinSet.h"
 
+#include<future>
+using std::ref;
+
+#include<ctime>
+
+inline void showclock(const char *str=nullptr)
+{
+#ifdef _WIN32
+    long long CL_PER_SEC = 1000;
+#else
+    long long CL_PER_SEC = 1000000;//test on centos
+#endif
+    static long long last = 0;
+    auto show_time = [&](long long time){
+        long long ms = time%CL_PER_SEC; time/=CL_PER_SEC;
+        long long sec = time%60;  time/=60;
+        long long min = time%60;  time/=60;
+        printf("%2llu:%02llu:%02llu %06llu",time,min,sec,ms);
+    };
+    
+    long long now = std::clock();
+    if(str)printf("%s ,",str);
+    printf("Time:");show_time(now);printf("\t(");
+    long long diff = now - last;
+    show_time(diff);printf(")\n");
+    last = now;
+}
+
 template<typename T>
 inline void set_dis(T &dis)
 {
@@ -104,6 +132,19 @@ inline void get_xyLine_singal_layer(s32 lay,std::vector<Statemant_2D_VG> &xLine,
 	
 	get_Line_swap_line(xLine,Xstate,SL,0,Py.size());
 	get_Line_swap_line(yLine,Ystate,SL,0,Px.size());
+}
+
+inline void get_xyLine_singal_layer_future(std::vector<Statemant_2D_VG> *xLine,std::vector<Statemant_2D_VG> *yLine,const DataSet &data,const std::vector<s64> &Px,const std::vector<s64> &Py)
+{
+	std::vector<std::future<void>> task;
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		task.emplace_back(std::async(get_xyLine_singal_layer,lay,ref(xLine[lay]),ref(yLine[lay]),ref(data),ref(Px),ref(Py)));
+	}
+	for(auto &f:task)
+	{
+		f.wait();
+	}
 }
 
 inline void get_PxPy(std::vector<s64> &Px,std::vector<s64> &Py,const DataSet &data,std::vector<Statemant_2D_VG> *xLine,std::vector<Statemant_2D_VG> *yLine)
@@ -284,8 +325,11 @@ void recursive_set_3d_VG_point(s32 l,s32 r,const DataSet &data,std::vector<std::
 	for(const auto &i:Rp) P1[mid].emplace_back(i);
 	set_dis(P1[mid]);
 	
-	recursive_set_3d_VG_point(l,mid-1,data,P1,Px,Py);
-	recursive_set_3d_VG_point(mid+1,r,data,P1,Px,Py);
+	std::future<void> L(std::async(recursive_set_3d_VG_point,l,mid-1,ref(data),P1,ref(Px),ref(Py)));
+	std::future<void> R(std::async(recursive_set_3d_VG_point,mid+1,r,ref(data),P1,ref(Px),ref(Py)));
+	
+	L.wait();
+	R.wait();
 }
 
 //*
@@ -373,6 +417,30 @@ void single_layer_point_project(const std::vector<std::pair<u32,u32>> &S,std::ve
 	
 }
 
+inline void point_project_to_XYLine_singal_layer(std::vector<std::pair<u32,u32>> &P1,std::vector<std::pair<u32,u32>> &P2,std::vector<Statemant_2D_VG> &xLine,std::vector<Statemant_2D_VG> &yLine,u32 x1,u32 x2,u32 y1,u32 y2)
+{
+	/*
+	xLine.emplace_back(1,x1,y1,y2,'B');
+	xLine.emplace_back(3,x2,y1,y2,'B');
+	yLine.emplace_back(1,y1,x1,x2,'B');
+	yLine.emplace_back(3,y2,x1,x2,'B');
+	*/
+	
+	single_layer_point_project(P1,xLine,yLine,P2,x1,x2,y1,y2);
+	for(const auto &p:P1)
+	{
+		P2.emplace_back(p);
+	}
+	set_dis(P2);
+	P1.clear();
+	for(const auto &p:P2)
+	{
+		if(x1<=p.first&&p.first<=x2&&y1<=p.second&&p.second<=y2)
+			P1.emplace_back(p);
+	}
+	P2.clear();
+}
+
 inline void point_project_to_XYLine(std::vector<std::pair<u32,u32>> *P1,std::vector<std::pair<u32,u32>> *P2,const DataSet &data,std::vector<Statemant_2D_VG> *xLine,std::vector<Statemant_2D_VG> *yLine,const std::vector<s64> &Px,const std::vector<s64> &Py)
 {
 	u32 x1=get_dis(Px,data.boundary.first.x);
@@ -380,30 +448,15 @@ inline void point_project_to_XYLine(std::vector<std::pair<u32,u32>> *P1,std::vec
 	u32 y1=get_dis(Py,data.boundary.first.y);
 	u32 y2=get_dis(Py,data.boundary.second.y);
 	
+	std::vector<std::future<void>> task;
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
-		/*
-		xLine[lay].emplace_back(1,x1,y1,y2,'B');
-		xLine[lay].emplace_back(3,x2,y1,y2,'B');
-		yLine[lay].emplace_back(1,y1,x1,x2,'B');
-		yLine[lay].emplace_back(3,y2,x1,x2,'B');
-		*/
-		
-		single_layer_point_project(P1[lay],xLine[lay],yLine[lay],P2[lay],x1,x2,y1,y2);
-		for(const auto &p:P1[lay])
-		{
-			P2[lay].emplace_back(p);
-		}
-		set_dis(P2[lay]);
-		P1[lay].clear();
-		for(const auto &p:P2[lay])
-		{
-			if(x1<=p.first&&p.first<=x2&&y1<=p.second&&p.second<=y2)
-				P1[lay].emplace_back(p);
-		}
-		P2[lay].clear();
+		task.emplace_back(std::async(point_project_to_XYLine_singal_layer,ref(P1[lay]),ref(P2[lay]),ref(xLine[lay]),ref(yLine[lay]),x1,x2,y1,y2));
 	}
-	
+	for(auto &f:task)
+	{
+		f.wait();
+	}
 }
 
 void recursive_set_2D_VG(s32 pl,s32 pr,s32 sl, s32 sr,std::vector<std::pair<u32,u32>> &S,std::vector<Statemant_2D_VG> &state,std::vector<u32> &Px,s8 is_rev=0)
@@ -550,7 +603,7 @@ inline void build_2D_VG_Y_point(s32 lay,const DataSet &data,std::vector<std::pai
 
 inline void build_2D_VG_point(const DataSet &data,std::vector<std::pair<u32,u32>> *P1,std::vector<std::pair<u32,u32>> *P2,std::vector<s64> &Px,std::vector<s64> &Py)
 {
-	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	/*for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		build_2D_VG_X_point(lay,data,P1,P2,Px,Py);
 		
@@ -567,7 +620,37 @@ inline void build_2D_VG_point(const DataSet &data,std::vector<std::pair<u32,u32>
 		set_dis(P1[lay]);
 		
 		P2[lay]=std::vector<std::pair<u32,u32>>();
+	}*/
+	///*
+	std::vector<std::pair<u32,u32>> P3[10];
+	std::vector<std::future<void>> taskX,taskY;
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		taskX.emplace_back(std::async(build_2D_VG_X_point,lay,ref(data),P1,P2,ref(Px),ref(Py)));
+		taskY.emplace_back(std::async(build_2D_VG_Y_point,lay,ref(data),P1,P3,ref(Px),ref(Py)));
 	}
+	for(s32 i=0;i<data.metal_layers;++i)
+	{
+		taskX[i].wait();
+		taskY[i].wait();
+		std::cerr<<"P2["<<i+1<<"].size(): "<<P2[i+1].size()<<endl;
+		std::cerr<<"P3["<<i+1<<"].size(): "<<P3[i+1].size()<<endl;
+		for(const auto &p:P2[i+1])
+		{
+			P1[i+1].emplace_back(p);
+		}
+		
+		P2[i+1]=std::vector<std::pair<u32,u32>>();
+		
+		for(const auto &p:P3[i+1])
+		{
+			P1[i+1].emplace_back(p);
+		}
+		set_dis(P1[i+1]);
+		
+		P3[i+1]=std::vector<std::pair<u32,u32>>();
+	}
+	//*/
 	std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
 }
 
@@ -1167,12 +1250,15 @@ void VisingGraph::build(const DataSet &data)
 	std::vector<Statemant_2D_VG> xLine[LIMIT_LAYER];
 	std::vector<Statemant_2D_VG> yLine[LIMIT_LAYER];
 	
+	showclock("start");
+	
 	get_original_PxPy(Px,Py,data);
 	
-	for(s32 lay=1;lay<=data.metal_layers;++lay)
-	{
-		get_xyLine_singal_layer(lay,xLine[lay],yLine[lay],data,Px,Py);
-	}
+	showclock("get_original_PxPy");
+	
+	get_xyLine_singal_layer_future(xLine,yLine,data,Px,Py);
+	
+	showclock("get_xyLine_singal_layer_future");
 	/*
 	for(s32 lay=1;lay<=data.metal_layers;++lay){
 		for(auto l:yLine[lay])
@@ -1184,11 +1270,13 @@ void VisingGraph::build(const DataSet &data)
 	}
 	//*/
 	get_PxPy(Px,Py,data,xLine,yLine);
+	showclock("get_PxPy");
 	
 	std::vector<std::pair<u32,u32>> P1[LIMIT_LAYER];
 	std::vector<std::pair<u32,u32>> P2[LIMIT_LAYER];
 	
 	get_original_P1(P1,data.metal_layers,xLine,yLine,Px,Py,data);
+	showclock("get_original_P1");
 	
 	//*
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
@@ -1200,6 +1288,7 @@ void VisingGraph::build(const DataSet &data)
 	
 	//recursive_set_3d_VG_point(1,data.metal_layers,data,P1,Px,Py);
 	project_point_on_all_layer(1,data.metal_layers,data,P1,P2,Px,Py);// insert more point
+	showclock("project_point_on_all_layer");
 	
 	//*
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
@@ -1210,6 +1299,7 @@ void VisingGraph::build(const DataSet &data)
 	//*/
 	
 	point_project_to_XYLine(P1,P2,data,xLine,yLine,Px,Py);
+	showclock("point_project_to_XYLine");
 	
 	/*
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
@@ -1231,6 +1321,7 @@ void VisingGraph::build(const DataSet &data)
 	//*/
 	
 	recursive_set_3d_VG_point(1,data.metal_layers,data,P1,Px,Py);
+	showclock("recursive_set_3d_VG_point");
 	//*
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
@@ -1240,6 +1331,7 @@ void VisingGraph::build(const DataSet &data)
 	//*/
 	
 	build_2D_VG_point(data,P1,P2,Px,Py);
+	showclock("build_2D_VG_point");
 	
 	point_project_to_XYLine(P1,P2,data,xLine,yLine,Px,Py);//add more point, delete OK
 	
