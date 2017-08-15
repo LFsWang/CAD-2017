@@ -654,25 +654,17 @@ inline void build_2D_VG_point(const DataSet &data,std::vector<std::pair<u32,u32>
 	std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
 }
 
-inline void put_the_point_number(s32 metal_layers,std::vector<point3D> &V_set,std::vector<std::tuple<u32,u32,size_t>> *V,std::vector<std::pair<u32,u32>> *P1)
+inline void put_the_point_number(s32 metal_layers,std::vector<point3D> &V_set,std::vector<std::pair<u32,u32>> *P1)
 {
 	for(s32 lay=1;lay<=metal_layers;++lay)
 	{
+		//P1[lay].shrink_to_fit();
 		for(const auto &p:P1[lay])
 		{
 			V_set.emplace_back(p.first,p.second,lay);
 		}
 	}
 	set_dis(V_set);
-	
-	for(s32 lay=1;lay<=metal_layers;++lay)
-	{
-		for(const auto &p:P1[lay])
-		{
-			V[lay].emplace_back(p.first,p.second,get_dis(V_set,point3D(p.first,p.second,lay)));
-		}
-		P1[lay]=std::vector<std::pair<u32,u32>>();
-	}
 }
 
 inline void merge_same_via_point(DisjoinSet &DST,const DataSet &data,const std::vector<point3D> &V_set,const std::vector<s64> &Px,const std::vector<s64> &Py)
@@ -918,7 +910,7 @@ inline void merge_shape_point_swap_line(s32 lay,DisjoinSet &DST,std::vector<Stat
 	}
 }
 
-inline void merge_same_shape_point_singal_layer(DisjoinSet &DST,std::vector<Statemant_2D_VG> *xLine,std::vector<Statemant_2D_VG> *yLine,std::vector<std::tuple<u32,u32,size_t>> *V,const std::vector<point3D> &V_set,const std::vector<s64> &Px,const std::vector<s64> &Py,s32 lay)
+inline void merge_same_shape_point_singal_layer(DisjoinSet &DST,std::vector<Statemant_2D_VG> *xLine,std::vector<Statemant_2D_VG> *yLine,std::vector<std::pair<u32,u32>> *P1,const std::vector<point3D> &V_set,const std::vector<s64> &Px,const std::vector<s64> &Py,s32 lay)
 {
 	std::vector<Statemant_2D_VG> Xstate;
 	std::vector<Statemant_2D_VG> Ystate;
@@ -936,22 +928,22 @@ inline void merge_same_shape_point_singal_layer(DisjoinSet &DST,std::vector<Stat
 		Ystate.emplace_back(type,st.a,st.b1,st.b2,'S');
 	}
 	
-	for(const auto &p:V[lay])
+	for(const auto &p:P1[lay])
 	{
-		Xstate.emplace_back(2,std::get<0>(p),std::get<1>(p));
-		Ystate.emplace_back(2,std::get<1>(p),std::get<0>(p));
+		Xstate.emplace_back(2,p.first,p.second);
+		Ystate.emplace_back(2,p.second,p.first);
 	}
 	
 	merge_shape_point_swap_line(lay,DST,Xstate,V_set,Py.size());
 	merge_shape_point_swap_line(lay,DST,Ystate,V_set,Px.size(),1);
 }
 
-inline void merge_same_shape_point(DisjoinSet &DST,std::vector<Statemant_2D_VG> *xLine,std::vector<Statemant_2D_VG> *yLine,std::vector<std::tuple<u32,u32,size_t>> *V,const std::vector<point3D> &V_set,const std::vector<s64> &Px,const std::vector<s64> &Py,s32 metal_layers)
+inline void merge_same_shape_point(DisjoinSet &DST,std::vector<Statemant_2D_VG> *xLine,std::vector<Statemant_2D_VG> *yLine,std::vector<std::pair<u32,u32>> *P1,const std::vector<point3D> &V_set,const std::vector<s64> &Px,const std::vector<s64> &Py,s32 metal_layers)
 {
 	std::vector<std::future<void>> task;
 	for(s32 lay=1;lay<=metal_layers;++lay)
 	{
-		task.emplace_back(std::async(merge_same_shape_point_singal_layer,ref(DST),xLine,yLine,ref(V),ref(V_set),ref(Px),ref(Py),lay));
+		task.emplace_back(std::async(merge_same_shape_point_singal_layer,ref(DST),xLine,yLine,P1,ref(V_set),ref(Px),ref(Py),lay));
 		//merge_same_shape_point_singal_layer(DST,xLine,yLine,V,V_set,Px,Py,lay);
 	}
 	for(auto &t:task)
@@ -1035,15 +1027,15 @@ inline void build_2D_edge_swape_line(s32 lay,const std::vector<size_t> &shrink_f
 	
 }
 
-inline void build_2D_edge_singal_layer(s32 lay,const DataSet &data,const std::vector<size_t> &shrink_from,std::vector<std::tuple<u32,u32,size_t>> *V,std::vector<s64> &Px,std::vector<s64> &Py,std::vector<Edge> &edgeX,std::vector<Edge> &edgeY,const std::vector<point3D> &V_set)
+inline void build_2D_edge_singal_layer(s32 lay,const DataSet &data,const std::vector<size_t> &shrink_from,std::vector<std::pair<u32,u32>> *P1,std::vector<s64> &Px,std::vector<s64> &Py,std::vector<Edge> &edgeX,std::vector<Edge> &edgeY,const std::vector<point3D> &V_set)
 {
 	std::vector<Statemant_2D_VG> Xstate;
 	std::vector<Statemant_2D_VG> Ystate;
 	
-	for(const auto &p:V[lay])
+	for(const auto &p:P1[lay])
 	{
-		Xstate.emplace_back(2,std::get<0>(p),std::get<1>(p));
-		Ystate.emplace_back(2,std::get<1>(p),std::get<0>(p));
+		Xstate.emplace_back(2,p.first,p.second);
+		Ystate.emplace_back(2,p.second,p.first);
 	}
 
 	for(const auto &o:data.Obstacles[lay])
@@ -1070,14 +1062,14 @@ inline void build_2D_edge_singal_layer(s32 lay,const DataSet &data,const std::ve
 	build_2D_edge_swape_line(lay,shrink_from,Ystate,V_set,edgeY,1);
 }
 
-inline void build_2D_edge(const DataSet &data,const std::vector<size_t> &shrink_from,std::vector<std::tuple<u32,u32,size_t>> *V,std::vector<s64> &Px,std::vector<s64> &Py,std::vector<Edge> &edge,const std::vector<point3D> &V_set)
+inline void build_2D_edge(const DataSet &data,const std::vector<size_t> &shrink_from,std::vector<std::pair<u32,u32>> *P1,std::vector<s64> &Px,std::vector<s64> &Py,std::vector<Edge> &edge,const std::vector<point3D> &V_set)
 {
 	std::vector<std::future<void>> task;
 	
 	std::vector<Edge> edgeX[10],edgeY[10];
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
-		task.emplace_back(std::async(build_2D_edge_singal_layer,lay,ref(data),ref(shrink_from),V,ref(Px),ref(Py),ref(edgeX[lay]),ref(edgeY[lay]),ref(V_set)));
+		task.emplace_back(std::async(build_2D_edge_singal_layer,lay,ref(data),ref(shrink_from),P1,ref(Px),ref(Py),ref(edgeX[lay]),ref(edgeY[lay]),ref(V_set)));
 		//build_2D_edge_singal_layer(lay,data,shrink_from,V,Px,Py,edgeX[lay],edgeY[lay],V_set);
 	}
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
@@ -1094,7 +1086,7 @@ inline void build_2D_edge(const DataSet &data,const std::vector<size_t> &shrink_
 	}
 }
 
-inline void build_via_edge_swap_line(s32 la1,std::vector<Statemant_2D_VG> &state_la2,std::vector<std::tuple<u32,u32,size_t>> *V,std::vector<std::tuple<u32,u32,s32>> &P,std::map<std::pair<u32,u32>,s32> &res,u32 bit_size)
+inline void build_via_edge_swap_line(s32 la1,std::vector<Statemant_2D_VG> &state_la2,std::vector<std::pair<u32,u32>> *P1,std::vector<std::tuple<u32,u32,s32>> &P,std::map<std::pair<u32,u32>,s32> &res,u32 bit_size)
 {
 	for(const auto &p:P)
 	{
@@ -1104,9 +1096,9 @@ inline void build_via_edge_swap_line(s32 la1,std::vector<Statemant_2D_VG> &state
 	P.clear();
 	res.clear();
 	
-	for(const auto &p:V[la1])
+	for(const auto &p:P1[la1])
 	{
-		state_la2.emplace_back(2,std::get<0>(p),std::get<1>(p),la1);
+		state_la2.emplace_back(2,p.first,p.second,la1);
 	}
 	
 	sort(state_la2.begin(),state_la2.end());
@@ -1141,7 +1133,7 @@ inline void build_via_edge_swap_line(s32 la1,std::vector<Statemant_2D_VG> &state
 	}
 }
 
-inline void build_via_edge(const DataSet &data,const std::vector<size_t> &shrink_from,std::vector<std::tuple<u32,u32,size_t>> *V,std::vector<s64> &Px,std::vector<s64> &Py,std::vector<Edge> &edge,const std::vector<point3D> &V_set)
+inline void build_via_edge(const DataSet &data,const std::vector<size_t> &shrink_from,std::vector<std::pair<u32,u32>> *P1,std::vector<s64> &Px,std::vector<s64> &Py,std::vector<Edge> &edge,const std::vector<point3D> &V_set)
 {
 	std::vector<std::tuple<u32,u32,s32>> P;
 	std::map<std::pair<u32,u32>,s32> res;
@@ -1163,16 +1155,17 @@ inline void build_via_edge(const DataSet &data,const std::vector<size_t> &shrink
 			}
 		}
 		
-		build_via_edge_swap_line(lay-1,state,V,P,res,Py.size());
+		build_via_edge_swap_line(lay-1,state,P1,P,res,Py.size());
 				
-		for(const auto &p:V[lay])
+		for(const auto &p:P1[lay])
 		{
-			auto it=res.find({std::get<0>(p),std::get<1>(p)});
+			auto it=res.find({p.first,p.second});
 			if(it!=res.end())
 			{
 				point3D P3D1(it->first.first,it->first.second,it->second);
+				point3D P3D2(p.first,p.second,lay);
 				size_t p1=get_dis(V_set,P3D1);
-				size_t p2=std::get<2>(p);
+				size_t p2=get_dis(V_set,P3D2);
 				if(shrink_from[p1]!=shrink_from[p2])
 				{
 					edge.emplace_back(p1,p2,'Z');
@@ -1396,18 +1389,8 @@ void VisingGraph::build(const DataSet &data)
 	}
 	std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
 	//*/
-	
-	std::vector<std::tuple<u32,u32,size_t>> V[LIMIT_LAYER];
-	
-	put_the_point_number(data.metal_layers,V_set,V,P1);
-	
-	//*
-	for(s32 lay=1;lay<=data.metal_layers;++lay)
-	{
-		std::cerr<<"V["<<lay<<"].size(): "<<V[lay].size()<<endl;
-	}
-	std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
-	//*/
+		
+	put_the_point_number(data.metal_layers,V_set,P1);
 	
 	DisjoinSet DST(V_set.size());
 	
@@ -1415,7 +1398,7 @@ void VisingGraph::build(const DataSet &data)
 	
 	merge_same_via_point(DST,data,V_set,Px,Py);
 	set_shape_point(ori_is_P,data.metal_layers,xLine,yLine,V_set,DST);
-	merge_same_shape_point(DST,xLine,yLine,V,V_set,Px,Py,data.metal_layers);
+	merge_same_shape_point(DST,xLine,yLine,P1,V_set,Px,Py,data.metal_layers);
 	
 	/*
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
@@ -1447,7 +1430,7 @@ void VisingGraph::build(const DataSet &data)
 	}
 	//*/
 	
-	build_2D_edge(data,shrink_from,V,Px,Py,edge,V_set);
+	build_2D_edge(data,shrink_from,P1,Px,Py,edge,V_set);
 	
 	/*
 	for(size_t i=0;i<edge.size();i+=2)
@@ -1456,7 +1439,7 @@ void VisingGraph::build(const DataSet &data)
 	}
 	//*/
 	
-	build_via_edge(data,shrink_from,V,Px,Py,edge,V_set);
+	build_via_edge(data,shrink_from,P1,Px,Py,edge,V_set);
 	
 	/*
 	for(size_t i=0;i<edge.size();i+=2)
