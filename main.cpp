@@ -19,9 +19,9 @@ using std::endl;
 inline void showclock(const char *str=nullptr)
 {
 #ifdef _WIN32
-    long long CL_PER_SEC = 1000;
+    long long CL_PER_SEC = CLOCKS_PER_SEC;//1000;
 #else
-    long long CL_PER_SEC = 1000000;//test on centos
+    long long CL_PER_SEC = CLOCKS_PER_SEC;//1000000;//test on centos
 #endif
     static long long last = 0;
     auto show_time = [&](long long time){

@@ -13,9 +13,9 @@ using std::ref;
 inline void showclock(const char *str=nullptr)
 {
 #ifdef _WIN32
-    long long CL_PER_SEC = 1000;
+    long long CL_PER_SEC = CLOCKS_PER_SEC;//1000;
 #else
-    long long CL_PER_SEC = 1000000;//test on centos
+    long long CL_PER_SEC = CLOCKS_PER_SEC;//1000000;//test on centos
 #endif
     static long long last = 0;
     auto show_time = [&](long long time){
@@ -344,6 +344,14 @@ void project_point_on_all_layer(s32 l,s32 r,const DataSet &data,std::vector<std:
 	for(s32 i=r;i>l;--i)
 	{
 		set_3d_VG_point(Rp,i,i-1,data,P1,Px,Py,P2);
+	}
+	for(s32 i=l;i<=r;++i)
+	{
+		for(const auto &j:P2[i])
+		{
+			P1[i].emplace_back(j);
+		}
+		P2[i].clear();
 	}
 }
 //*/
@@ -1079,10 +1087,12 @@ inline void build_2D_edge(const DataSet &data,const std::vector<size_t> &shrink_
 		{
 			edge.emplace_back(e);
 		}
+		edgeX[lay]=std::vector<Edge>();
 		for(auto e:edgeY[lay])
 		{
 			edge.emplace_back(e);
 		}
+		edgeY[lay]=std::vector<Edge>();
 	}
 }
 
@@ -1356,8 +1366,8 @@ void VisingGraph::build(const DataSet &data)
 	std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
 	//*/
 	
-	recursive_set_3d_VG_point(1,data.metal_layers,data,P1,Px,Py);
-	showclock("recursive_set_3d_VG_point");
+	//recursive_set_3d_VG_point(1,data.metal_layers,data,P1,Px,Py);
+	//showclock("recursive_set_3d_VG_point");
 	//*
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
@@ -1366,10 +1376,11 @@ void VisingGraph::build(const DataSet &data)
 	std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
 	//*/
 	
-	build_2D_VG_point(data,P1,P2,Px,Py);
-	showclock("build_2D_VG_point");
+	//build_2D_VG_point(data,P1,P2,Px,Py);
+	//showclock("build_2D_VG_point");
 	
-	point_project_to_XYLine(P1,P2,data,xLine,yLine,Px,Py);//add more point, delete OK
+	//point_project_to_XYLine(P1,P2,data,xLine,yLine,Px,Py);//add more point, delete OK
+	//showclock("point_project_to_XYLine");
 	
 	/*
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
@@ -1391,14 +1402,20 @@ void VisingGraph::build(const DataSet &data)
 	//*/
 		
 	put_the_point_number(data.metal_layers,V_set,P1);
+	showclock("put_the_point_number");
 	
 	DisjoinSet DST(V_set.size());
 	
 	std::vector<bool> ori_is_P(V_set.size());
 	
 	merge_same_via_point(DST,data,V_set,Px,Py);
+	showclock("merge_same_via_point");
+	
 	set_shape_point(ori_is_P,data.metal_layers,xLine,yLine,V_set,DST);
+	showclock("set_shape_point");
+	
 	merge_same_shape_point(DST,xLine,yLine,P1,V_set,Px,Py,data.metal_layers);
+	showclock("merge_same_shape_point");
 	
 	/*
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
@@ -1412,6 +1429,8 @@ void VisingGraph::build(const DataSet &data)
 	//*/
 	
 	N = shrink_point(shrink_from,is_pinv,ori_is_P,DST,V_set.size());
+	showclock("shrink_point");
+	
 	std::cerr<<N<<' '<<V_set.size()<<endl;
 	/*
 	19720
@@ -1431,6 +1450,7 @@ void VisingGraph::build(const DataSet &data)
 	//*/
 	
 	build_2D_edge(data,shrink_from,P1,Px,Py,edge,V_set);
+	showclock("build_2D_edge");
 	
 	/*
 	for(size_t i=0;i<edge.size();i+=2)
@@ -1440,6 +1460,7 @@ void VisingGraph::build(const DataSet &data)
 	//*/
 	
 	build_via_edge(data,shrink_from,P1,Px,Py,edge,V_set);
+	showclock("build_via_edge");
 	
 	/*
 	for(size_t i=0;i<edge.size();i+=2)
@@ -1456,7 +1477,8 @@ void VisingGraph::build(const DataSet &data)
 	
 	
 	set_edge_and_graph(data.viacost,N,G,edge,shrink_from,Px,Py,V_set);
-	//*
+	showclock("set_edge_and_graph");
+	/*
 	s64 cost=0;
 	for(size_t i=0;i<edge.size();i+=2)
 	{
@@ -1467,6 +1489,7 @@ void VisingGraph::build(const DataSet &data)
 	u32 cnt=0;
 	std::vector<size_t> tmd,tmd2;
 	for(size_t i=0;i<is_pinv.size();++i)if(is_pinv[i])tmd.push_back(i),++cnt;
+	std::cerr<<cnt<<endl;
 	/*
 	for(auto p:V[1]){
 		if(get_dis(tmd,std::get<2>(p))<tmd.size()&&tmd[get_dis(tmd,std::get<2>(p))]==std::get<2>(p))tmd2.push_back(std::get<2>(p));
@@ -1474,6 +1497,5 @@ void VisingGraph::build(const DataSet &data)
 	set_dis(tmd2);
 	for(auto i:tmd2)std::cerr<<i<<endl;
 	//*/
-	std::cerr<<cnt<<endl;
 	//*/
 }
