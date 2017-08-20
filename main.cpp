@@ -234,7 +234,7 @@ int main(int argc,char *argv[])
     showclock("set_spacing_on_Obstacles");
 
 	VisingGraph v;
-	v.build(d);
+	v.build(d,1);
     showclock("VisingGraph build");
 
 	std::vector<std::size_t> res=select_edge(v);

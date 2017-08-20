@@ -44,5 +44,5 @@ struct VisingGraph{
 	std::vector<s64> Px;
 	std::vector<s64> Py;
 	
-	void build(const DataSet &data);
+	void build(const DataSet &data,bool is_not_connect);
 };

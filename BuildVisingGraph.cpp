@@ -5,6 +5,8 @@
 #include"BinaryIndexTree.h"
 #include"DisjoinSet.h"
 
+const int debug_mode=0;
+
 #include<future>
 using std::ref;
 
@@ -467,9 +469,14 @@ inline void point_project_to_XYLine(std::vector<std::pair<u32,u32>> *P1,std::vec
 	}
 }
 
-void recursive_set_2D_VG(s32 pl,s32 pr,s32 sl, s32 sr,std::vector<std::pair<u32,u32>> &S,std::vector<Statemant_2D_VG> &state,std::vector<u32> &Px,s8 is_rev=0)
+inline void get_sline(std::vector<Statemant_2D_VG> &xLine,std::vector<Statemant_2D_VG> &yLine)
 {
-	if(pl>=pr)return;
+	
+}
+
+void recursive_set_2D_VG(s32 pl,s32 pr,s32 sl, s32 sr,std::vector<std::pair<u32,u32>> &S,std::vector<Statemant_2D_VG> &state,std::vector<u32> &Px,s8 is_rev,s32 deep=3)
+{
+	if(pl>=pr||deep--==0)return;
 	s32 pmid=(pl+pr)/2;
 	
 	s32 sl_mid,sr_mid;
@@ -539,8 +546,8 @@ void recursive_set_2D_VG(s32 pl,s32 pr,s32 sl, s32 sr,std::vector<std::pair<u32,
 		}
 	}
 	
-	recursive_set_2D_VG(pl,pmid-1,sl,sl_mid-1,S,state,Px,is_rev);
-	recursive_set_2D_VG(pmid+1,pr,sr_mid+1,sr,S,state,Px,is_rev);
+	recursive_set_2D_VG(pl,pmid-1,sl,sl_mid-1,S,state,Px,is_rev,deep);
+	recursive_set_2D_VG(pmid+1,pr,sr_mid+1,sr,S,state,Px,is_rev,deep);
 }
 
 inline void build_2D_VG_X_point(s32 lay,const DataSet &data,std::vector<std::pair<u32,u32>> *P1,std::vector<std::pair<u32,u32>> *P2,std::vector<s64> &Px,std::vector<s64> &Py)
@@ -573,7 +580,7 @@ inline void build_2D_VG_X_point(s32 lay,const DataSet &data,std::vector<std::pai
 	
 	sort(state.begin(),state.end());
 	
-	recursive_set_2D_VG(0,s32(X.size())-1,0,s32(state.size())-1,P2[lay],state,X);
+	recursive_set_2D_VG(0,s32(X.size())-1,0,s32(state.size())-1,P2[lay],state,X,0);
 }
 
 inline void build_2D_VG_Y_point(s32 lay,const DataSet &data,std::vector<std::pair<u32,u32>> *P1,std::vector<std::pair<u32,u32>> *P2,std::vector<s64> &Px,std::vector<s64> &Py)
@@ -690,8 +697,11 @@ inline void merge_same_via_point(DisjoinSet &DST,const DataSet &data,const std::
 			size_t p1=get_dis(V_set,P3D1);
 			size_t p2=get_dis(V_set,P3D2);
 			
-			if(!(V_set[p1]==P3D1))std::cerr<<"Error V_set[p1]!=P3D1\n";
-			if(!(V_set[p2]==P3D2))std::cerr<<"Error V_set[p2]!=P3D2\n";
+			if(debug_mode)
+			{
+				if(!(V_set[p1]==P3D1))std::cerr<<"Error V_set[p1]!=P3D1\n";
+				if(!(V_set[p2]==P3D2))std::cerr<<"Error V_set[p2]!=P3D2\n";
+			}
 			
 			DST.U(p1,p2);
 		}
@@ -792,8 +802,11 @@ inline void merge_shape_point_swap_line(s32 lay,DisjoinSet &DST,std::vector<Stat
 					size_t p1=get_dis(V_set,P3D1);
 					size_t p2=get_dis(V_set,P3D2);
 					
-					if(!(V_set[p1]==P3D1))std::cerr<<"Error V_set[p1]!=P3D1\n";
-					if(!(V_set[p2]==P3D2))std::cerr<<"Error V_set[p2]!=P3D2\n";
+					if(debug_mode)
+					{
+						if(!(V_set[p1]==P3D1))std::cerr<<"Error V_set[p1]!=P3D1\n";
+						if(!(V_set[p2]==P3D2))std::cerr<<"Error V_set[p2]!=P3D2\n";
+					}
 					
 					DST.U(p1,p2);
 				}
@@ -833,8 +846,13 @@ inline void merge_shape_point_swap_line(s32 lay,DisjoinSet &DST,std::vector<Stat
 					std::swap(P3D2.x,P3D2.y);
 				}
 				size_t p2=get_dis(V_set,P3D2);
-				if(!(V_set[p1]==P3D1))std::cerr<<"Error V_set[p1]!=P3D1\n";
-				if(!(V_set[p2]==P3D2))std::cerr<<"Error V_set[p2]!=P3D2\n";
+				
+				if(debug_mode)
+				{
+					if(!(V_set[p1]==P3D1))std::cerr<<"Error V_set[p1]!=P3D1\n";
+					if(!(V_set[p2]==P3D2))std::cerr<<"Error V_set[p2]!=P3D2\n";
+				}
+				
 				DST.U(p1,p2);
 				
 				ST.erase(tmp);
@@ -867,8 +885,11 @@ inline void merge_shape_point_swap_line(s32 lay,DisjoinSet &DST,std::vector<Stat
 					size_t p1=get_dis(V_set,P3D1);
 					size_t p2=get_dis(V_set,P3D2);
 					
-					if(!(V_set[p1]==P3D1))std::cerr<<"Error V_set[p1]!=P3D1\n";
-					if(!(V_set[p2]==P3D2))std::cerr<<"Error V_set[p2]!=P3D2\n";
+					if(debug_mode)
+					{
+						if(!(V_set[p1]==P3D1))std::cerr<<"Error V_set[p1]!=P3D1\n";
+						if(!(V_set[p2]==P3D2))std::cerr<<"Error V_set[p2]!=P3D2\n";
+					}
 					
 					DST.U(p1,p2);
 				}
@@ -908,8 +929,13 @@ inline void merge_shape_point_swap_line(s32 lay,DisjoinSet &DST,std::vector<Stat
 					std::swap(P3D2.x,P3D2.y);
 				}
 				size_t p2=get_dis(V_set,P3D2);
-				if(!(V_set[p1]==P3D1))std::cerr<<"Error V_set[p1]!=P3D1\n";
-				if(!(V_set[p2]==P3D2))std::cerr<<"Error V_set[p2]!=P3D2\n";
+				
+				if(debug_mode)
+				{
+					if(!(V_set[p1]==P3D1))std::cerr<<"Error V_set[p1]!=P3D1\n";
+					if(!(V_set[p2]==P3D2))std::cerr<<"Error V_set[p2]!=P3D2\n";
+				}
+				
 				DST.U(p1,p2);
 				
 				ST.erase(tmp);
@@ -1010,8 +1036,11 @@ inline void build_2D_edge_swape_line(s32 lay,const std::vector<size_t> &shrink_f
 				size_t p1=get_dis(V_set,P3D1);
 				size_t p2=get_dis(V_set,P3D2);
 				
-				if(!(V_set[p1]==P3D1))std::cerr<<"Error V_set[p1]!=P3D1\n";
-				if(!(V_set[p2]==P3D2))std::cerr<<"Error V_set[p2]!=P3D2\n";
+				if(debug_mode)
+				{
+					if(!(V_set[p1]==P3D1))std::cerr<<"Error V_set[p1]!=P3D1\n";
+					if(!(V_set[p2]==P3D2))std::cerr<<"Error V_set[p2]!=P3D2\n";
+				}
 				
 				if(shrink_from[p1]!=shrink_from[p2])
 				{
@@ -1080,9 +1109,17 @@ inline void build_2D_edge(const DataSet &data,const std::vector<size_t> &shrink_
 		task.emplace_back(std::async(build_2D_edge_singal_layer,lay,ref(data),ref(shrink_from),P1,ref(Px),ref(Py),ref(edgeX[lay]),ref(edgeY[lay]),ref(V_set)));
 		//build_2D_edge_singal_layer(lay,data,shrink_from,V,Px,Py,edgeX[lay],edgeY[lay],V_set);
 	}
+	size_t cnt=0;
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		task[lay-1].wait();
+		cnt+=edgeX[lay].size();
+		cnt+=edgeY[lay].size();
+	}
+	edge.reserve(cnt*2);
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		//task[lay-1].wait();
 		for(auto e:edgeX[lay])
 		{
 			edge.emplace_back(e);
@@ -1219,7 +1256,10 @@ inline void set_edge_and_graph(s64 viacost,size_t N,std::vector<std::vector<size
 		e.u=shrink_from[e.ori_u];
 		e.v=shrink_from[e.ori_v];
 		
-		if(e.u==e.v)std::cerr<<"Error!\n";
+		if(debug_mode)
+		{
+			if(e.u==e.v)std::cerr<<"Error!\n";
+		}
 		
 		G[e.u].emplace_back(i);
 		
@@ -1289,7 +1329,7 @@ void find_shape_point(std::vector<point3D> &P,std::vector<Statemant_2D_VG> *xLin
 }
 */
 
-void VisingGraph::build(const DataSet &data)
+void VisingGraph::build(const DataSet &data,bool is_not_connect=0)
 {	
 	static const int LIMIT_LAYER = DataSet::LIMIT_LAYER;
 	
@@ -1331,6 +1371,11 @@ void VisingGraph::build(const DataSet &data)
 	}
 	std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
 	//*/
+	
+	if(is_not_connect){
+		build_2D_VG_point(data,P1,P2,Px,Py);
+		showclock("build_2D_VG_point");
+	}
 	
 	//recursive_set_3d_VG_point(1,data.metal_layers,data,P1,Px,Py);
 	project_point_on_all_layer(1,data.metal_layers,data,P1,P2,Px,Py);// insert more point
