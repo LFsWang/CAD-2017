@@ -114,22 +114,22 @@ inline void get_Line_swap_line(std::vector<Statemant_2D_VG> &line,std::vector<St
 			{
 				if( L<SL.segments.front().first )
 				{
-					sline.emplace_back(1,st.a,L,SL.segments.front().first,'S');
+					sline.emplace_back(1,st.a,L,SL.segments.front().first,'p');
 				}
 				if( R>SL.segments.back().second )
 				{
-					sline.emplace_back(1,st.a,SL.segments.back().second,R,'S');
+					sline.emplace_back(1,st.a,SL.segments.back().second,R,'p');
 				}
 			}
 			else
 			{
 				if( L<SL.segments.front().first )
 				{
-					oline.emplace_back(1,st.a,L,SL.segments.front().first,'O');
+					oline.emplace_back(1,st.a,L,SL.segments.front().first,'p');
 				}
 				if( R>SL.segments.back().second )
 				{
-					oline.emplace_back(1,st.a,SL.segments.back().second,R,'O');
+					oline.emplace_back(1,st.a,SL.segments.back().second,R,'p');
 				}
 			}
 		}
@@ -440,18 +440,23 @@ void one_way_point_project_swap_line(const Statemant_2D_VG &st,std::set<u32> &ST
 		auto it_l=ST.lower_bound(st.b1);
 		auto it_r=ST.upper_bound(st.b2);
 		
-		while(it_l!=it_r)
+		if(!is_rev)
 		{
-			auto tmp=it_l++;
-			if(!is_rev)
+			while(it_l!=it_r)
 			{
+				auto tmp=it_l++;
 				S2.emplace_back(st.a,*tmp);
+				ST.erase(tmp);
 			}
-			else
+		}
+		else
+		{
+			while(it_l!=it_r)
 			{
+				auto tmp=it_l++;
 				S2.emplace_back(*tmp,st.a);
+				ST.erase(tmp);
 			}
-			ST.erase(tmp);
 		}
 	}
 }
@@ -495,7 +500,7 @@ void single_layer_point_project(const std::vector<std::pair<u32,u32>> &S,std::ve
 	
 }
 
-inline void point_project_to_XYLine_singal_layer(std::vector<std::pair<u32,u32>> &P1,std::vector<std::pair<u32,u32>> &P2,std::vector<Statemant_2D_VG> &xLine,std::vector<Statemant_2D_VG> &yLine,u32 x1,u32 x2,u32 y1,u32 y2)
+inline void point_project_to_XYLine_singal_layer(std::vector<std::pair<u32,u32>> &P1,std::vector<std::pair<u32,u32>> &P2,std::vector<std::pair<u32,u32>> &P3,std::vector<std::pair<u32,u32>> &P4,std::vector<Statemant_2D_VG> &xLine,std::vector<Statemant_2D_VG> &yLine,u32 x1,u32 x2,u32 y1,u32 y2)
 {
 	/*
 	xLine.emplace_back(1,x1,y1,y2,'B');
@@ -509,6 +514,17 @@ inline void point_project_to_XYLine_singal_layer(std::vector<std::pair<u32,u32>>
 	{
 		P2.emplace_back(p);
 	}
+	for(const auto &p:P3)
+	{
+		P2.emplace_back(p);
+	}
+	P3=std::vector<std::pair<u32,u32>>();
+	for(const auto &p:P4)
+	{
+		P2.emplace_back(p);
+	}
+	P4=std::vector<std::pair<u32,u32>>();
+	
 	set_dis(P2);
 	P1.clear();
 	for(const auto &p:P2)
@@ -519,7 +535,7 @@ inline void point_project_to_XYLine_singal_layer(std::vector<std::pair<u32,u32>>
 	P2.clear();
 }
 
-inline void point_project_to_XYLine(std::vector<std::pair<u32,u32>> *P1,std::vector<std::pair<u32,u32>> *P2,const DataSet &data,std::vector<Statemant_2D_VG> *xLine,std::vector<Statemant_2D_VG> *yLine,const std::vector<s64> &Px,const std::vector<s64> &Py)
+inline void point_project_to_XYLine(std::vector<std::pair<u32,u32>> *P1,std::vector<std::pair<u32,u32>> *P2,std::vector<std::pair<u32,u32>> *P3,std::vector<std::pair<u32,u32>> *P4,const DataSet &data,std::vector<Statemant_2D_VG> *xLine,std::vector<Statemant_2D_VG> *yLine,const std::vector<s64> &Px,const std::vector<s64> &Py)
 {
 	u32 x1=get_dis(Px,data.boundary.first.x);
 	u32 x2=get_dis(Px,data.boundary.second.x);
@@ -529,11 +545,121 @@ inline void point_project_to_XYLine(std::vector<std::pair<u32,u32>> *P1,std::vec
 	std::vector<std::future<void>> task;
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
-		task.emplace_back(std::async(point_project_to_XYLine_singal_layer,ref(P1[lay]),ref(P2[lay]),ref(xLine[lay]),ref(yLine[lay]),x1,x2,y1,y2));
+		task.emplace_back(std::async(point_project_to_XYLine_singal_layer,ref(P1[lay]),ref(P2[lay]),ref(P3[lay]),ref(P4[lay]),ref(xLine[lay]),ref(yLine[lay]),x1,x2,y1,y2));
 	}
 	for(auto &f:task)
 	{
 		f.wait();
+	}
+}
+
+void SO_point_project_swap_line(const Statemant_2D_VG &st,std::set<u32> &ST,std::vector<std::pair<u32,u32>> &S2,bool is_rev=0)
+{
+	if(st.type==2)
+	{
+		ST.emplace(st.b1);
+	}
+	else
+	{
+		auto it_l=ST.lower_bound(st.b1);
+		auto it_r=ST.upper_bound(st.b2);
+		
+		if(st.seg_type=='p')
+		{
+			if(!is_rev)
+			{
+				while(it_l!=it_r)
+				{
+					auto tmp=it_l++;
+					S2.emplace_back(st.a,*tmp);
+					ST.erase(tmp);
+				}
+			}
+			else
+			{
+				while(it_l!=it_r)
+				{
+					auto tmp=it_l++;
+					S2.emplace_back(*tmp,st.a);
+					ST.erase(tmp);
+				}
+			}
+		}
+		else
+		{
+			while(it_l!=it_r)
+			{
+				ST.erase(it_l++);
+			}
+		}
+	}
+}
+
+inline void point_project_to_soxyLine_singal_layer(const std::vector<std::pair<u32,u32>> &S,std::vector<Statemant_2D_VG> &xLine,std::vector<Statemant_2D_VG> &yLine,std::vector<Statemant_2D_VG> &pxLine,std::vector<Statemant_2D_VG> &pyLine,std::vector<std::pair<u32,u32>> &S2)
+{
+	std::vector<Statemant_2D_VG> LXstate=xLine;
+	std::vector<Statemant_2D_VG> RXstate=xLine;
+	std::vector<Statemant_2D_VG> LYstate=yLine;
+	std::vector<Statemant_2D_VG> RYstate=yLine;
+	
+	for(const auto &st:pxLine)
+	{
+		RXstate.emplace_back(st);
+		LXstate.emplace_back(st);
+		LXstate.back().type=3;
+	}
+	
+	for(const auto &st:pyLine)
+	{
+		RYstate.emplace_back(st);
+		LYstate.emplace_back(st);
+		LYstate.back().type=3;
+	}
+	
+	for(const auto &p:S)
+	{
+		LXstate.emplace_back(2,p.first,p.second);
+		RXstate.emplace_back(2,p.first,p.second);
+		LYstate.emplace_back(2,p.second,p.first);
+		RYstate.emplace_back(2,p.second,p.first);
+	}
+	
+	sort(LXstate.begin(),LXstate.end());
+	sort(RXstate.begin(),RXstate.end());
+	sort(LYstate.begin(),LYstate.end());
+	sort(RYstate.begin(),RYstate.end());
+	
+	std::set<u32> XST,XRST,YST,YRST;
+	for(const auto &st:LXstate)
+	{
+		SO_point_project_swap_line(st,XST,S2);
+		//one_way_point_project_swap_line(st,XST,S2,0,2147483647);
+	}
+	
+	for(auto it=RXstate.rbegin();it!=RXstate.rend();++it)
+	{
+		SO_point_project_swap_line(*it,XRST,S2);
+		//one_way_point_project_swap_line(*it,XRST,S2,0,2147483647);
+	}
+	
+	for(const auto &st:LYstate)
+	{
+		SO_point_project_swap_line(st,YST,S2,1);
+		//one_way_point_project_swap_line(st,YST,S2,0,2147483647,1);
+	}
+	
+	for(auto it=RYstate.rbegin();it!=RYstate.rend();++it)
+	{
+		SO_point_project_swap_line(*it,YRST,S2,1);
+		//one_way_point_project_swap_line(*it,YRST,S2,0,2147483647,1);
+	}
+}
+
+inline void point_project_to_soxyLine(std::vector<std::pair<u32,u32>> *P1,std::vector<std::pair<u32,u32>> *P2,const DataSet &data,std::vector<Statemant_2D_VG> *xLine,std::vector<Statemant_2D_VG> *yLine,std::vector<Statemant_2D_VG> *pxLine,std::vector<Statemant_2D_VG> *pyLine,const std::vector<s64> &Px,const std::vector<s64> &Py)
+{
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		point_project_to_soxyLine_singal_layer(P1[lay],xLine[lay],yLine[lay],pxLine[lay],pyLine[lay],P2[lay]);
 	}
 }
 
@@ -1433,6 +1559,8 @@ void VisingGraph::build(const DataSet &data,bool is_not_connect=0)
 	
 	std::vector<std::pair<u32,u32>> P1[LIMIT_LAYER];
 	std::vector<std::pair<u32,u32>> P2[LIMIT_LAYER];
+	std::vector<std::pair<u32,u32>> P3[LIMIT_LAYER];
+	std::vector<std::pair<u32,u32>> P4[LIMIT_LAYER];
 	
 	get_original_P1(P1,data.metal_layers,xLine,yLine,Px,Py,data);
 	showclock("get_original_P1");
@@ -1446,9 +1574,56 @@ void VisingGraph::build(const DataSet &data,bool is_not_connect=0)
 	//*/
 	
 	if(is_not_connect){
-		build_2D_VG_point(data,P1,P2,Px,Py);
-		showclock("build_2D_VG_point");
+		//build_2D_VG_point(data,P1,P2,Px,Py);
+		//showclock("build_2D_VG_point");
 	}
+	point_project_to_soxyLine(P1,P3,data,xLine,yLine,sxLine,syLine,Px,Py);
+	showclock("shape: point_project_to_soxyLine");
+	
+	//*
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		std::cerr<<"P3["<<lay<<"].size(): "<<P3[lay].size()<<endl;
+	}
+	std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	//*/
+	
+	point_project_to_soxyLine(P1,P4,data,xLine,yLine,oxLine,oyLine,Px,Py);
+	showclock("obstacle: point_project_to_soxyLine");
+	
+	//*
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		std::cerr<<"P4["<<lay<<"].size(): "<<P4[lay].size()<<endl;
+	}
+	std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	//*/
+	
+	/*
+	for(s32 lay=1;lay<=data.metal_layers;++lay){
+		for(auto l:oxLine[lay])
+		{
+			cout<<"V-line M"<<lay<<" ("<<Px[l.a]<<","<<Py[l.b1]<<") ("<<Px[l.a]<<","<<Py[l.b2]<<")\n";
+			if(Py[l.b1]>Py[l.b2]) std::cerr<<"GG\n";
+		}
+		for(auto l:oyLine[lay])
+		{
+			cout<<"H-line M"<<lay<<" ("<<Px[l.b1]<<","<<Py[l.a]<<") ("<<Px[l.b2]<<","<<Py[l.a]<<")\n";
+			if(Px[l.b1]>Px[l.b2]) std::cerr<<"FF\n";
+		}
+	}
+	//*/
+	
+	/*
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		for(const auto &p:P4[lay])
+		{
+			if(lay==1)
+			cout<<"Via V"<<lay<<" ("<<Px[p.first]<<","<<Py[p.second]<<")\n";
+		}
+	}
+	//*/
 	
 	//recursive_set_3d_VG_point(1,data.metal_layers,data,P1,Px,Py);
 	project_point_on_all_layer(1,data.metal_layers,data,P1,P2,Px,Py);// insert more point
@@ -1462,7 +1637,7 @@ void VisingGraph::build(const DataSet &data,bool is_not_connect=0)
 	std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
 	//*/
 	
-	point_project_to_XYLine(P1,P2,data,xLine,yLine,Px,Py);
+	point_project_to_XYLine(P1,P2,P3,P4,data,xLine,yLine,Px,Py);
 	showclock("point_project_to_XYLine");
 	
 	/*
@@ -1475,6 +1650,14 @@ void VisingGraph::build(const DataSet &data,bool is_not_connect=0)
 		}
 	}
 	//*/
+	
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		sxLine[lay] = std::vector<Statemant_2D_VG>();
+		oxLine[lay] = std::vector<Statemant_2D_VG>();
+		syLine[lay] = std::vector<Statemant_2D_VG>();
+		oyLine[lay] = std::vector<Statemant_2D_VG>();
+	}
 	
 	//*
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
