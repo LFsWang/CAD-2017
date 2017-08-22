@@ -20,6 +20,9 @@ struct swape_line_P1{
 	void find_seg(u32 a,u32 b,u32 l,u32 r,u32 d);
 	
 	void set_seg();
+	
+	u32 findL(u32 x,u32 l,u32 r,u32 d);
+	u32 findR(u32 x,u32 l,u32 r,u32 d);
 };
 
 u32 swape_line_P1::get_area_sum(u32 l,u32 r,u32 d)
@@ -81,4 +84,60 @@ void swape_line_P1::set_seg()
 		}
 	}
 	segments.swap(tmp);
+}
+
+u32 swape_line_P1::findL(u32 x,u32 l,u32 r,u32 d)
+{
+	u32 area = get_area_sum(l,r,d);
+	if( area==0 )
+	{
+		return l;
+	}
+	if( r-l == area )
+	{
+		return x;
+	}
+	u32 mid = (l+r)/2;
+	if(mid<x)
+	{
+		u32 R = findL(x,mid,r,d*2+1);
+		if( R==mid )
+		{
+			u32 L = findL(mid,l,mid,d*2);
+			return L;
+		}
+		return R;
+	}
+	else
+	{
+		return findL(x,l,mid,d*2);
+	}
+}
+
+u32 swape_line_P1::findR(u32 x,u32 l,u32 r,u32 d)
+{
+	u32 area = get_area_sum(l,r,d);
+	if( area==0 )
+	{
+		return r;
+	}
+	if( r-l == area )
+	{
+		return x;
+	}
+	u32 mid = (l+r)/2;
+	if(x<mid)
+	{
+		u32 L = findR(x,l,mid,d*2);
+		if( L==mid )
+		{
+			u32 R = findR(mid,mid,r,d*2+1);
+			return R;
+		}
+		return L;
+	}
+	else
+	{
+		return findR(x,mid,r,d*2+1);
+	}
 }

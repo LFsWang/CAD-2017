@@ -71,11 +71,17 @@ inline void get_original_PxPy(std::vector<s64> &Px,std::vector<s64> &Py,const Da
 			Py.emplace_back(s.second.y);
 		}
 	}
+	
+	Px.emplace_back(data.boundary.first.x);
+	Px.emplace_back(data.boundary.second.x);
+	Py.emplace_back(data.boundary.first.y);
+	Py.emplace_back(data.boundary.second.y);
+	
 	set_dis(Px);
 	set_dis(Py);
 }
 
-inline void get_Line_swap_line(std::vector<Statemant_2D_VG> &line,std::vector<statementP1> &state,swape_line_P1 &SL,u32 l,u32 r)
+inline void get_Line_swap_line(std::vector<Statemant_2D_VG> &line,std::vector<Statemant_2D_VG> &sline,std::vector<Statemant_2D_VG> &oline,std::vector<statementP1> &state,swape_line_P1 &SL,u32 l,u32 r,u32 al,u32 ar,u32 bl,u32 br)
 {
 	sort(state.begin(),state.end());
 	SL.init(r-l+1);
@@ -98,11 +104,40 @@ inline void get_Line_swap_line(std::vector<Statemant_2D_VG> &line,std::vector<st
 		{
 			line.emplace_back(type,st.a,seg.first,seg.second,st.seg_type);
 		}
+		if(SL.segments.size()&&al<=st.a&&st.a<=ar)
+		{
+			u32 L=SL.findL(SL.segments.front().first,l,r,1);
+			u32 R=SL.findR(SL.segments.back().second,l,r,1);
+			if(L<bl)L=bl;
+			if(R>br)R=br;
+			if(st.seg_type=='S')
+			{
+				if( L<SL.segments.front().first )
+				{
+					sline.emplace_back(1,st.a,L,SL.segments.front().first,'S');
+				}
+				if( R>SL.segments.back().second )
+				{
+					sline.emplace_back(1,st.a,SL.segments.back().second,R,'S');
+				}
+			}
+			else
+			{
+				if( L<SL.segments.front().first )
+				{
+					oline.emplace_back(1,st.a,L,SL.segments.front().first,'O');
+				}
+				if( R>SL.segments.back().second )
+				{
+					oline.emplace_back(1,st.a,SL.segments.back().second,R,'O');
+				}
+			}
+		}
 		SL.segments.clear();
 	}
 }
 
-inline void get_xyLine_singal_layer(s32 lay,std::vector<Statemant_2D_VG> &xLine,std::vector<Statemant_2D_VG> &yLine,const DataSet &data,const std::vector<s64> &Px,const std::vector<s64> &Py)
+inline void get_xyLine_singal_layer(s32 lay,std::vector<Statemant_2D_VG> &xLine,std::vector<Statemant_2D_VG> &yLine,std::vector<Statemant_2D_VG> &sxLine,std::vector<Statemant_2D_VG> &syLine,std::vector<Statemant_2D_VG> &oxLine,std::vector<Statemant_2D_VG> &oyLine,const DataSet &data,const std::vector<s64> &Px,const std::vector<s64> &Py)
 {
 	std::vector<statementP1> Xstate,Ystate;
 	swape_line_P1 SL;
@@ -132,16 +167,21 @@ inline void get_xyLine_singal_layer(s32 lay,std::vector<Statemant_2D_VG> &xLine,
 		Ystate.emplace_back(y2,x1,x2,-1,'S');
 	}
 	
-	get_Line_swap_line(xLine,Xstate,SL,0,Py.size());
-	get_Line_swap_line(yLine,Ystate,SL,0,Px.size());
+	u32 lx = get_dis(Px,data.boundary.first.x);
+	u32 ly = get_dis(Py,data.boundary.first.y);
+	u32 ux = get_dis(Px,data.boundary.second.x);
+	u32 uy = get_dis(Py,data.boundary.second.y);
+	
+	get_Line_swap_line(xLine,sxLine,oxLine,Xstate,SL,0,Py.size()-1,lx,ux,ly,uy);
+	get_Line_swap_line(yLine,syLine,oyLine,Ystate,SL,0,Px.size()-1,ly,uy,lx,ux);
 }
 
-inline void get_xyLine_singal_layer_future(std::vector<Statemant_2D_VG> *xLine,std::vector<Statemant_2D_VG> *yLine,const DataSet &data,const std::vector<s64> &Px,const std::vector<s64> &Py)
+inline void get_xyLine_singal_layer_future(std::vector<Statemant_2D_VG> *xLine,std::vector<Statemant_2D_VG> *yLine,std::vector<Statemant_2D_VG> *sxLine,std::vector<Statemant_2D_VG> *syLine,std::vector<Statemant_2D_VG> *oxLine,std::vector<Statemant_2D_VG> *oyLine,const DataSet &data,const std::vector<s64> &Px,const std::vector<s64> &Py)
 {
 	std::vector<std::future<void>> task;
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
-		task.emplace_back(std::async(get_xyLine_singal_layer,lay,ref(xLine[lay]),ref(yLine[lay]),ref(data),ref(Px),ref(Py)));
+		task.emplace_back(std::async(get_xyLine_singal_layer,lay,ref(xLine[lay]),ref(yLine[lay]),ref(sxLine[lay]),ref(syLine[lay]),ref(oxLine[lay]),ref(oyLine[lay]),ref(data),ref(Px),ref(Py)));
 	}
 	for(auto &f:task)
 	{
@@ -149,7 +189,7 @@ inline void get_xyLine_singal_layer_future(std::vector<Statemant_2D_VG> *xLine,s
 	}
 }
 
-inline void get_PxPy(std::vector<s64> &Px,std::vector<s64> &Py,const DataSet &data,std::vector<Statemant_2D_VG> *xLine,std::vector<Statemant_2D_VG> *yLine)
+inline void get_PxPy(std::vector<s64> &Px,std::vector<s64> &Py,const DataSet &data,std::vector<Statemant_2D_VG> *xLine,std::vector<Statemant_2D_VG> *yLine,std::vector<Statemant_2D_VG> *sxLine,std::vector<Statemant_2D_VG> *syLine,std::vector<Statemant_2D_VG> *oxLine,std::vector<Statemant_2D_VG> *oyLine)
 {
 	
 	std::vector<s64> nPx,nPy;
@@ -193,6 +233,34 @@ inline void get_PxPy(std::vector<s64> &Px,std::vector<s64> &Py,const DataSet &da
 		}
 		
 		for(auto &i:yLine[lay])
+		{
+			i.a=get_dis(nPy,Py[i.a]);
+			i.b1=get_dis(nPx,Px[i.b1]);
+			i.b2=get_dis(nPx,Px[i.b2]);
+		}
+		
+		for(auto &i:sxLine[lay])
+		{
+			i.a=get_dis(nPx,Px[i.a]);
+			i.b1=get_dis(nPy,Py[i.b1]);
+			i.b2=get_dis(nPy,Py[i.b2]);
+		}
+		
+		for(auto &i:syLine[lay])
+		{
+			i.a=get_dis(nPy,Py[i.a]);
+			i.b1=get_dis(nPx,Px[i.b1]);
+			i.b2=get_dis(nPx,Px[i.b2]);
+		}
+		
+		for(auto &i:oxLine[lay])
+		{
+			i.a=get_dis(nPx,Px[i.a]);
+			i.b1=get_dis(nPy,Py[i.b1]);
+			i.b2=get_dis(nPy,Py[i.b2]);
+		}
+		
+		for(auto &i:oyLine[lay])
 		{
 			i.a=get_dis(nPy,Py[i.a]);
 			i.b1=get_dis(nPx,Px[i.b1]);
@@ -467,11 +535,6 @@ inline void point_project_to_XYLine(std::vector<std::pair<u32,u32>> *P1,std::vec
 	{
 		f.wait();
 	}
-}
-
-inline void get_sline(std::vector<Statemant_2D_VG> &xLine,std::vector<Statemant_2D_VG> &yLine)
-{
-	
 }
 
 void recursive_set_2D_VG(s32 pl,s32 pr,s32 sl, s32 sr,std::vector<std::pair<u32,u32>> &S,std::vector<Statemant_2D_VG> &state,std::vector<u32> &Px,s8 is_rev,s32 deep=3)
@@ -1334,7 +1397,11 @@ void VisingGraph::build(const DataSet &data,bool is_not_connect=0)
 	static const int LIMIT_LAYER = DataSet::LIMIT_LAYER;
 	
 	std::vector<Statemant_2D_VG> xLine[LIMIT_LAYER];
+	std::vector<Statemant_2D_VG> sxLine[LIMIT_LAYER];
+	std::vector<Statemant_2D_VG> oxLine[LIMIT_LAYER];
 	std::vector<Statemant_2D_VG> yLine[LIMIT_LAYER];
+	std::vector<Statemant_2D_VG> syLine[LIMIT_LAYER];
+	std::vector<Statemant_2D_VG> oyLine[LIMIT_LAYER];
 	
 	showclock("start");
 	
@@ -1342,21 +1409,27 @@ void VisingGraph::build(const DataSet &data,bool is_not_connect=0)
 	
 	showclock("get_original_PxPy");
 	
-	get_xyLine_singal_layer_future(xLine,yLine,data,Px,Py);
+	get_xyLine_singal_layer_future(xLine,yLine,sxLine,syLine,oxLine,oyLine,data,Px,Py);
 	
 	showclock("get_xyLine_singal_layer_future");
+	
+	get_PxPy(Px,Py,data,xLine,yLine,sxLine,syLine,oxLine,oyLine);
+	showclock("get_PxPy");
+	
 	/*
 	for(s32 lay=1;lay<=data.metal_layers;++lay){
-		for(auto l:yLine[lay])
+		for(auto l:sxLine[lay])
 		{
-			if(l.seg_type=='S'){
-				cout<<"H-line M"<<lay<<" ("<<Px[l.b1]<<","<<Py[l.a]<<") ("<<Px[l.b2]<<","<<Py[l.a]<<")\n";
-			}
+			cout<<"V-line M"<<lay<<" ("<<Px[l.a]<<","<<Py[l.b1]<<") ("<<Px[l.a]<<","<<Py[l.b2]<<")\n";
+			if(Py[l.b1]>Py[l.b2]) std::cerr<<"GG\n";
+		}
+		for(auto l:syLine[lay])
+		{
+			cout<<"H-line M"<<lay<<" ("<<Px[l.b1]<<","<<Py[l.a]<<") ("<<Px[l.b2]<<","<<Py[l.a]<<")\n";
+			if(Px[l.b1]>Px[l.b2]) std::cerr<<"FF\n";
 		}
 	}
 	//*/
-	get_PxPy(Px,Py,data,xLine,yLine);
-	showclock("get_PxPy");
 	
 	std::vector<std::pair<u32,u32>> P1[LIMIT_LAYER];
 	std::vector<std::pair<u32,u32>> P2[LIMIT_LAYER];
