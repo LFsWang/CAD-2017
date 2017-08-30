@@ -12,6 +12,7 @@
 #include<tuple>
 #include<unordered_set>
 #include<stack>
+#include<queue>
 
 using std::cout;
 using std::endl;
@@ -48,29 +49,29 @@ std::vector<std::size_t> select_edge(const VisingGraph &G)
 
     sz_t N = G.G.size();
     auto &V = G.G;
-    sz_t tmp_ping = INVLID;
-    sz_t tmp_ping_num = 0;
 
     std::vector<u64>  dist(N,INF);
     std::vector<sz_t> prev_eid(N,INVLID);
     std::vector<sz_t> index(N,INVLID);
-    MinHeap<u64> mh(N);
 
+    //SPFA
+    std::vector<bool> inqueue(N,false);
+    std::queue<sz_t> qu;
     for(sz_t i=0;i<N;++i)
         if( G.is_pinv[i] )
         {
             dist[i] = 0;
-            mh.push(i,0);
             index[i]=i;
-            tmp_ping = i;
-            tmp_ping_num++;
+            qu.push(i);
+            inqueue[i]=true;
         }
-    u64 d;
+
     sz_t v;
-    while( !mh.empty() )
+    while( !qu.empty() )
     {
-        std::tie(v,d) = mh.top();
-        mh.pop();
+        v = qu.front();
+        qu.pop();
+        inqueue[v]=false;
         for(sz_t eid:V[v])
         {
             sz_t e = G.edge[eid].v;
@@ -81,19 +82,21 @@ std::vector<std::size_t> select_edge(const VisingGraph &G)
                 dist[e] = dist[v]+cost;
                 prev_eid[e] = eid;
                 index[e] = index[v];
-                mh.push(e,dist[e]);
+                if( !inqueue[e] )
+                {
+                    inqueue[e]=true;
+                    qu.push(e);
+                }
             }
         }
     }
-    showclock(" :Dijkstra");
-
-    DisjoinSet tmpds(N);
+    showclock(" :SPFA");
+    
     std::vector< std::tuple<u64,sz_t> > CrossEdge;
     {
         sz_t eid=0;
         for(const Edge &E:G.edge)
         {
-            tmpds.U(E.u,E.v);
             if( index[E.u]!=index[E.v] && E.u > E.v )
             {
                 CrossEdge.emplace_back( dist[E.u]+dist[E.v]+E.cost , eid );
@@ -102,7 +105,6 @@ std::vector<std::size_t> select_edge(const VisingGraph &G)
         }
     }
     std::sort(CrossEdge.begin(),CrossEdge.end());
-    std::cout<<"Compment 0 SZ:"<<tmpds.size(0)<<",G.N: "<<G.N<<std::endl;
     showclock(" :Find CrossEdge");
 
     std::vector<sz_t> SelectKEdge;
@@ -119,9 +121,12 @@ std::vector<std::size_t> select_edge(const VisingGraph &G)
         }
     }
     showclock(" :Kruskal 1");
-    std::vector<bool> used(G.edge.size(),false);
-    auto &FinalEdge = CrossEdge;
 
+    std::vector<bool> &used = inqueue;
+    used.resize(G.edge.size());
+    std::fill(used.begin(),used.end(),false);
+    
+    auto &FinalEdge = CrossEdge;
     FinalEdge.clear();
     for(sz_t eid:SelectKEdge)
     {
@@ -195,9 +200,7 @@ std::vector<std::size_t> select_edge(const VisingGraph &G)
     std::copy(used_eid.begin(),used_eid.end(),std::back_inserter(SelectKEdge));
     std::cout<<"After reduce E="<<SelectKEdge.size()<<std::endl;
     showclock(" :Reduce Edge");
-    //DEBUG CODE
-    std::cout<<"Ping Disjoin Size:"<<ds.size(tmp_ping)<<std::endl;
-    std::cout<<"All ping :"<<tmp_ping_num<<std::endl;
+
     return SelectKEdge;
 }
 
