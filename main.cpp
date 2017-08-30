@@ -243,18 +243,7 @@ int main(int argc,char *argv[])
 	std::vector<std::size_t> res=select_edge(v);
     showclock("select_edge");
 	
-    //*
-    for(auto it:res)
-	{
-        auto i=it%2?it^1:it;
-		if(v.edge[i].type=='Z'){
-			for(auto lay=v.V_set[v.edge[i].ori_u].layer;lay<v.V_set[v.edge[i].ori_v].layer;++lay)
-			fout<<"Via V"<<lay<<" ("<<v.Px[v.V_set[v.edge[i].ori_u].x]<<","<<v.Py[v.V_set[v.edge[i].ori_u].y]<<")\n";
-		}
-		else{
-			fout<<v.edge[i].type<<"-line M"<<v.V_set[v.edge[i].ori_u].layer<<" ("<<v.Px[v.V_set[v.edge[i].ori_u].x]<<","<<v.Py[v.V_set[v.edge[i].ori_u].y]<<") ("<<v.Px[v.V_set[v.edge[i].ori_v].x]<<","<<v.Py[v.V_set[v.edge[i].ori_v].y]<<")\n";
-		}
-	}
-    //*/
+    v.print_select_edges(res,fout);
+	
     showclock("DONE!!!");
 }

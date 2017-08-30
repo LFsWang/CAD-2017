@@ -451,22 +451,19 @@ void one_way_point_project_swap_line(const Statemant_2D_VG &st,std::set<u32> &ST
 		
 		if(!is_rev)
 		{
-			while(it_l!=it_r)
+			for(auto it=it_l;it!=it_r;++it)
 			{
-				auto tmp=it_l++;
-				S2.emplace_back(st.a,*tmp);
-				ST.erase(tmp);
+				S2.emplace_back(st.a,*it);
 			}
 		}
 		else
 		{
-			while(it_l!=it_r)
+			for(auto it=it_l;it!=it_r;++it)
 			{
-				auto tmp=it_l++;
-				S2.emplace_back(*tmp,st.a);
-				ST.erase(tmp);
+				S2.emplace_back(*it,st.a);
 			}
 		}
+		ST.erase(it_l,it_r);
 	}
 }
 
@@ -509,7 +506,7 @@ void single_layer_point_project(const std::vector<std::pair<u32,u32>> &S,std::ve
 		//if(Ystate[ri].seg_type!='B'||Ystate[ri].type!=1)
 			one_way_point_project_swap_line(Ystate[ri],RST,S2,y1,y2,1);
 	}
-	
+	// to do thread
 }
 
 inline void point_project_to_XYLine_singal_layer(std::vector<std::pair<u32,u32>> &P1,std::vector<std::pair<u32,u32>> &P2,std::vector<std::pair<u32,u32>> &P3,std::vector<std::pair<u32,u32>> &P4,std::vector<Statemant_2D_VG> &xLine,std::vector<Statemant_2D_VG> &yLine,u32 x1,u32 x2,u32 y1,u32 y2)
@@ -581,30 +578,20 @@ void SO_point_project_swap_line(const Statemant_2D_VG &st,std::set<u32> &ST,std:
 		{
 			if(!is_rev)
 			{
-				while(it_l!=it_r)
+				for(auto it=it_l;it!=it_r;++it)
 				{
-					auto tmp=it_l++;
-					S2.emplace_back(st.a,*tmp);
-					ST.erase(tmp);
+					S2.emplace_back(st.a,*it);
 				}
 			}
 			else
 			{
-				while(it_l!=it_r)
+				for(auto it=it_l;it!=it_r;++it)
 				{
-					auto tmp=it_l++;
-					S2.emplace_back(*tmp,st.a);
-					ST.erase(tmp);
+					S2.emplace_back(*it,st.a);
 				}
 			}
 		}
-		else
-		{
-			while(it_l!=it_r)
-			{
-				ST.erase(it_l++);
-			}
-		}
+		ST.erase(it_l,it_r);
 	}
 }
 
@@ -1031,14 +1018,11 @@ inline void merge_shape_point_swap_line(DisjoinSet &DST,std::vector<Statemant_2D
 			auto it_r=ST.upper_bound(st.b2);
 			size_t p1 = it_l->second;
 			
-			while(it_l!=it_r)
+			for(auto it=it_l;it!=it_r;++it)
 			{
-				auto tmp=it_l++;
-				
-				DST.U(p1,tmp->second);
-				
-				ST.erase(tmp);
+				DST.U(p1,it->second);
 			}
+			ST.erase(it_l,it_r);
 		}
 	}
 	/* // 註解調不知道有沒有影響
@@ -1097,7 +1081,7 @@ inline void merge_shape_point_swap_line(DisjoinSet &DST,std::vector<Statemant_2D
 
 inline void merge_same_shape_point_singal_layer(DisjoinSet &DST,std::vector<Statemant_2D_VG> *xLine,std::vector<Statemant_2D_VG> *yLine,std::vector<size_t> *Pv,const std::vector<point3D> &V_set,const std::vector<s64> &Px,const std::vector<s64> &Py,s32 lay)
 {
-	std::vector<Statemant_2D_VG> Xstate;
+	std::vector<Statemant_2D_VG> Xstate;//global
 	std::vector<Statemant_2D_VG> Ystate;
 	
 	Xstate.reserve(xLine[lay].size()+Pv[lay].size());
@@ -1194,10 +1178,7 @@ inline void build_2D_edge_swape_line(const std::vector<size_t> &shrink_from,std:
 		{
 			auto it_l=ST.lower_bound(st.b1);
 			auto it_r=ST.upper_bound(st.b2);
-			while(it_l!=it_r)
-			{
-				ST.erase(it_l++);
-			}
+			ST.erase(it_l,it_r);
 		}
 	}
 	
@@ -1737,4 +1718,19 @@ void VisingGraph::build(const DataSet &data,bool is_not_connect=0)
 	
 	set_edge_and_graph(data.viacost,N,G,edge,shrink_from,Px,Py,V_set);
 	showclock("set_edge_and_graph");
+}
+
+void VisingGraph::print_select_edges(const std::vector<std::size_t> &res,std::ofstream &fout)
+{
+	for(auto it:res)
+	{
+        auto i=it%2?it^1:it;
+		if(edge[i].type=='Z'){
+			for(auto lay=V_set[edge[i].ori_u].layer;lay<V_set[edge[i].ori_v].layer;++lay)
+			fout<<"Via V"<<lay<<" ("<<Px[V_set[edge[i].ori_u].x]<<","<<Py[V_set[edge[i].ori_u].y]<<")\n";
+		}
+		else{
+			fout<<edge[i].type<<"-line M"<<V_set[edge[i].ori_u].layer<<" ("<<Px[V_set[edge[i].ori_u].x]<<","<<Py[V_set[edge[i].ori_u].y]<<") ("<<Px[V_set[edge[i].ori_v].x]<<","<<Py[V_set[edge[i].ori_v].y]<<")\n";
+		}
+	}
 }

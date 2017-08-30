@@ -2,7 +2,9 @@
 #include<map>
 #include<set>
 #include<tuple>
+#include<iostream>
 #include<algorithm>
+#include<unordered_map>
 
 struct Edge{
 	size_t ori_u;
@@ -45,4 +47,15 @@ struct VisingGraph{
 	std::vector<s64> Py;
 	
 	void build(const DataSet &data,bool is_not_connect);
+	void print_select_edges(const std::vector<std::size_t> &res,std::ofstream &fout);
+};
+
+struct pairhash {
+	template <typename T, typename U>
+	std::size_t operator()(const std::pair<T,U> &x) const
+	{
+		size_t seed = std::hash<T>()(x.first);
+		return std::hash<U>()(x.second) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+		//return std::hash<T>()(x.first) ^ std::hash<U>()(x.second);
+	}
 };
