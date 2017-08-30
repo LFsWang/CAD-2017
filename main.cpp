@@ -1,6 +1,7 @@
 #include "DataLoader.h"
 #include "BuildVisingGraph.h"
 #include "DisjoinSet.h"
+#include "MinHeap.h"
 
 #include<ctime>
 #include<functional>
@@ -11,7 +12,7 @@
 #include<tuple>
 #include<unordered_set>
 #include<stack>
-#include<ext/pb_ds/priority_queue.hpp>
+
 using std::cout;
 using std::endl;
 
@@ -53,44 +54,34 @@ std::vector<std::size_t> select_edge(const VisingGraph &G)
     std::vector<u64>  dist(N,INF);
     std::vector<sz_t> prev_eid(N,INVLID);
     std::vector<sz_t> index(N,INVLID);
-
-    using puu = std::pair<u64,u64>;
-    using MinHeap = __gnu_pbds::priority_queue<puu,std::greater<puu>, __gnu_pbds::binomial_heap_tag>;
-    MinHeap mh;
-    std::vector<MinHeap::point_iterator> hit;
+    MinHeap<u64> mh(N);
 
     for(sz_t i=0;i<N;++i)
-    {
         if( G.is_pinv[i] )
         {
             dist[i] = 0;
-            hit.emplace_back(mh.push(std::make_pair(0,i)));
+            mh.push(i,0);
             index[i]=i;
             tmp_ping = i;
             tmp_ping_num++;
         }
-        else
-        {
-            hit.emplace_back(mh.push(std::make_pair(INF,i)));
-        }
-    }
     u64 d;
     sz_t v;
     while( !mh.empty() )
     {
-        std::tie(d,v) = mh.top();
+        std::tie(v,d) = mh.top();
         mh.pop();
         for(sz_t eid:V[v])
         {
-            const sz_t &e = G.edge[eid].v;
-            const u64 &cost = G.edge[eid].cost;
+            sz_t e = G.edge[eid].v;
+            u64 cost = G.edge[eid].cost;
 
             if( dist[e] > dist[v]+cost )
             {
                 dist[e] = dist[v]+cost;
                 prev_eid[e] = eid;
                 index[e] = index[v];
-                mh.modify(hit[e],std::make_pair(dist[e],e));
+                mh.push(e,dist[e]);
             }
         }
     }
