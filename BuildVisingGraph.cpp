@@ -848,13 +848,23 @@ inline void build_2D_VG_point(const DataSet &data,std::vector<std::pair<u32,u32>
 	std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
 }
 */
+
+inline void set_Pv(const std::vector<point3D> &V_set,s32 lay,std::vector<std::pair<u32,u32>> *P1,std::vector<size_t> *Pv)
+{
+	Pv[lay].reserve(P1[lay].size());
+	for(const auto &p:P1[lay])
+	{
+		Pv[lay].emplace_back(get_dis(V_set,point3D(p.first,p.second,lay)));
+	}
+	std::vector<std::pair<u32,u32>>().swap(P1[lay]);
+}
+
 inline void put_the_point_number(s32 metal_layers,std::vector<point3D> &V_set,std::vector<std::pair<u32,u32>> *P1,std::vector<size_t> *Pv)
 {
 	size_t cnt = 0;
 	for(s32 lay=1;lay<=metal_layers;++lay)
 	{
 		cnt+=P1[lay].size();
-		Pv[lay].reserve(P1[lay].size());
 	}
 	
 	V_set.reserve(cnt);
@@ -868,13 +878,14 @@ inline void put_the_point_number(s32 metal_layers,std::vector<point3D> &V_set,st
 		}
 	}
 	set_dis(V_set);
+	std::vector<std::future<void>> task;
 	for(s32 lay=1;lay<=metal_layers;++lay)
 	{
-		for(const auto &p:P1[lay])
-		{
-			Pv[lay].emplace_back(get_dis(V_set,point3D(p.first,p.second,lay)));
-		}
-		std::vector<std::pair<u32,u32>>().swap(P1[lay]);
+		task.emplace_back(std::async(set_Pv,ref(V_set),lay,P1,Pv));
+	}
+	for(auto &f:task)
+	{
+		f.wait();
 	}
 }
 
@@ -1218,6 +1229,9 @@ inline void build_2D_edge_singal_layer(s32 lay,const DataSet &data,const std::ve
 		}
 	}
 	
+	edgeX.reserve(Pv[lay].size()*4);
+	edgeY.reserve(Pv[lay].size()*4);
+	
 	std::future<void> XF(std::async(build_2D_edge_swape_line,ref(shrink_from),ref(Xstate),ref(edgeX),0));
 	std::future<void> YF(std::async(build_2D_edge_swape_line,ref(shrink_from),ref(Ystate),ref(edgeY),1));
 	
@@ -1238,12 +1252,12 @@ inline void build_2D_edge(const DataSet &data,const std::vector<size_t> &shrink_
 		task.emplace_back(std::async(build_2D_edge_singal_layer,lay,ref(data),ref(shrink_from),Pv,ref(Px),ref(Py),ref(edgeX[lay]),ref(edgeY[lay]),ref(V_set)));
 		//build_2D_edge_singal_layer(lay,data,shrink_from,V,Px,Py,edgeX[lay],edgeY[lay],V_set);
 	}
-	size_t cnt=0;
+	//size_t cnt=0;
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		task[lay-1].wait();
-		cnt+=edgeX[lay].size();
-		cnt+=edgeY[lay].size();
+		//cnt+=edgeX[lay].size();
+		//cnt+=edgeY[lay].size();
 	}
 	//edge.reserve(cnt*2);
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
@@ -1348,18 +1362,11 @@ inline void build_via_edge(const DataSet &data,const std::vector<size_t> &shrink
 	}
 }
 
-inline void set_edge_and_graph(s64 viacost,size_t N,std::vector<std::vector<size_t>> &G,std::vector<Edge> &edge,const std::vector<size_t> &shrink_from,std::vector<s64> &Px,std::vector<s64> &Py,const std::vector<point3D> &V_set)
+inline void set_edge(size_t l,size_t r,s64 viacost,std::vector<Edge> &edge,std::vector<s64> &Px,std::vector<s64> &Py,const std::vector<point3D> &V_set)
 {
-	G.clear();
-	G.resize(N);
-	
-	for(auto &g:G)
+	for(;l<r;++l)
 	{
-		g.reserve(6);
-	}
-	for(size_t i=0;i<edge.size();++i)
-	{
-		auto &e=edge[i];
+		auto &e=edge[l];
 		if(e.type=='Z')
 		{
 			s64 z1=V_set[e.ori_u].layer;
@@ -1374,6 +1381,30 @@ inline void set_edge_and_graph(s64 viacost,size_t N,std::vector<std::vector<size
 			s64 y2=Py[V_set[e.ori_v].y];
 			e.cost=std::abs(x1-x2)+std::abs(y1-y2);
 		}
+	}
+}
+
+inline void set_edge_and_graph(s64 viacost,size_t N,std::vector<std::vector<size_t>> &G,std::vector<Edge> &edge,const std::vector<size_t> &shrink_from,std::vector<s64> &Px,std::vector<s64> &Py,const std::vector<point3D> &V_set)
+{
+	size_t edge_div = edge.size()/7, edge_cnt = 0;
+	std::vector<std::future<void>> task;
+	for(s32 i=0;i<7;++i)
+	{
+		task.emplace_back(std::async(set_edge,edge_cnt,i==6?(edge.size()):(edge_cnt+edge_div),viacost,ref(edge),ref(Px),ref(Py),ref(V_set)));
+		edge_cnt+=edge_div;
+		std::cerr<<"edge_cnt: "<<edge_cnt<<'\n';
+	}
+	
+	G.clear();
+	G.resize(N);
+	
+	for(auto &g:G)
+	{
+		g.reserve(6);
+	}
+	for(size_t i=0;i<edge.size();++i)
+	{
+		auto &e=edge[i];
 		
 		e.u=shrink_from[e.ori_u];
 		e.v=shrink_from[e.ori_v];
@@ -1385,6 +1416,11 @@ inline void set_edge_and_graph(s64 viacost,size_t N,std::vector<std::vector<size
 		
 		G[e.u].emplace_back(i);
 		
+	}
+	
+	for(auto &t:task)
+	{
+		t.wait();
 	}
 }
 
@@ -1690,6 +1726,9 @@ void VisingGraph::build(const DataSet &data,bool is_not_connect=0)
 		}
 	}
 	//*/
+	
+	edge.reserve(N*12);
+	showclock("edge.reserve(N*6)");
 	
 	build_via_edge(data,shrink_from,Pv,Px,Py,edge,V_set);
 	showclock("build_via_edge");
