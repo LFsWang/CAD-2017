@@ -817,7 +817,7 @@ inline void build_2D_VG_Y_point(s32 lay,const DataSet &data,std::vector<std::pai
 
 inline void build_2D_VG_point(const DataSet &data,std::vector<std::pair<u32,u32>> *P1,std::vector<std::pair<u32,u32>> *P2,std::vector<s64> &Px,std::vector<s64> &Py)
 {
-	std::vector<std::pair<u32,u32>> P3[10];
+	std::vector<std::pair<u32,u32>> P3[11];
 	std::vector<std::future<void>> taskX,taskY;
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
@@ -1245,7 +1245,7 @@ inline void build_2D_edge(const DataSet &data,const std::vector<size_t> &shrink_
 		cnt+=edgeX[lay].size();
 		cnt+=edgeY[lay].size();
 	}
-	edge.reserve(cnt*2);
+	//edge.reserve(cnt*2);
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		//task[lay-1].wait();
@@ -1353,6 +1353,10 @@ inline void set_edge_and_graph(s64 viacost,size_t N,std::vector<std::vector<size
 	G.clear();
 	G.resize(N);
 	
+	for(auto &g:G)
+	{
+		g.reserve(6);
+	}
 	for(size_t i=0;i<edge.size();++i)
 	{
 		auto &e=edge[i];
@@ -1687,6 +1691,9 @@ void VisingGraph::build(const DataSet &data,bool is_not_connect=0)
 	}
 	//*/
 	
+	build_via_edge(data,shrink_from,Pv,Px,Py,edge,V_set);
+	showclock("build_via_edge");
+	
 	build_2D_edge(data,shrink_from,Pv,Px,Py,edge,V_set);
 	showclock("build_2D_edge");
 	
@@ -1696,9 +1703,6 @@ void VisingGraph::build(const DataSet &data,bool is_not_connect=0)
 		cout<<edge[i].type<<"-line M"<<V_set[edge[i].ori_u].layer<<" ("<<Px[V_set[edge[i].ori_u].x]<<","<<Py[V_set[edge[i].ori_u].y]<<") ("<<Px[V_set[edge[i].ori_v].x]<<","<<Py[V_set[edge[i].ori_v].y]<<")\n";
 	}
 	//*/
-	
-	build_via_edge(data,shrink_from,Pv,Px,Py,edge,V_set);
-	showclock("build_via_edge");
 	
 	std::cerr<<"edge size: "<<edge.size()<<'\n';
 	
