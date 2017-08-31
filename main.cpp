@@ -1,7 +1,6 @@
 #include "DataLoader.h"
 #include "BuildVisingGraph.h"
 #include "DisjoinSet.h"
-#include "MinHeap.h"
 
 #include<ctime>
 #include<functional>
@@ -47,30 +46,35 @@ std::vector<std::size_t> select_edge(const VisingGraph &G)
     const u64 INF = 0x3fffffffffffffffLL;
     static_assert( INF <= std::numeric_limits<decltype(INF)>::max()/2 ,"Invlid inf!");
 
-    sz_t N = G.G.size();
+    const sz_t N = G.G.size();
     auto &V = G.G;
 
-    std::vector<u64>  dist(N,INF);
-    std::vector<sz_t> prev_eid(N,INVLID);
-    std::vector<sz_t> index(N,INVLID);
+    std::vector<u64>  dist;
+    std::vector<sz_t> prev_eid;
+    std::vector<sz_t> index;
 
     //SPFA
     std::vector<bool> inqueue(N,false);
-    std::queue<sz_t> qu;
+    std::deque<sz_t> qu;
     for(sz_t i=0;i<N;++i)
+    {
+        dist.emplace_back(INF);
+        prev_eid.emplace_back(INVLID);
+        index.emplace_back(INVLID);
         if( G.is_pinv[i] )
         {
             dist[i] = 0;
             index[i]=i;
-            qu.push(i);
+            qu.emplace_back(i);
             inqueue[i]=true;
         }
+    }
 
     sz_t v;
     while( !qu.empty() )
     {
         v = qu.front();
-        qu.pop();
+        qu.pop_front();
         inqueue[v]=false;
         for(sz_t eid:V[v])
         {
@@ -84,14 +88,17 @@ std::vector<std::size_t> select_edge(const VisingGraph &G)
                 index[e] = index[v];
                 if( !inqueue[e] )
                 {
+                    if( !qu.empty() && dist[e] <= dist[qu.front()] )
+                        qu.emplace_front(e);
+                    else
+                        qu.emplace_back(e);
                     inqueue[e]=true;
-                    qu.push(e);
                 }
             }
         }
     }
     showclock(" :SPFA");
-    
+
     std::vector< std::tuple<u64,sz_t> > CrossEdge;
     {
         sz_t eid=0;
