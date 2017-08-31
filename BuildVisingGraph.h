@@ -5,6 +5,7 @@
 #include<iostream>
 #include<algorithm>
 #include<unordered_map>
+#include"DisjoinSet.h"
 
 struct Edge{
 	size_t ori_u;
@@ -45,6 +46,7 @@ struct VisingGraph{
 	std::vector<size_t> shrink_from;
 	std::vector<s64> Px;
 	std::vector<s64> Py;
+	DisjoinSet DST;
 	
 	void build(const DataSet &data,bool is_not_connect);
 	void print_select_edges(const std::vector<std::size_t> &res,std::ofstream &fout);

@@ -1680,7 +1680,7 @@ void VisingGraph::build(const DataSet &data,bool is_not_connect=0)
 	put_the_point_number(data.metal_layers,V_set,P1,Pv);
 	showclock("put_the_point_number");
 	
-	DisjoinSet DST(V_set.size());
+	DST.init(V_set.size());
 	
 	std::vector<bool> ori_is_P(V_set.size());
 	

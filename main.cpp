@@ -39,7 +39,7 @@ inline void showclock(const char *str=nullptr)
     last = now;
 }
 
-std::vector<std::size_t> select_edge(const VisingGraph &G)
+std::vector<std::size_t> select_edge(const VisingGraph &G,DisjoinSet &ds)
 {
     using sz_t = std::size_t;
     const sz_t INVLID = std::numeric_limits<sz_t>::max();
@@ -115,7 +115,7 @@ std::vector<std::size_t> select_edge(const VisingGraph &G)
     showclock(" :Find CrossEdge");
 
     std::vector<sz_t> SelectKEdge;
-    DisjoinSet ds(N);
+    ds.init(N);
     for(const auto &TUS:CrossEdge)
     {
         sz_t eid;
@@ -247,7 +247,7 @@ int main(int argc,char *argv[])
 	v.build(d,1);
     showclock("VisingGraph build");
 
-	std::vector<std::size_t> res=select_edge(v);
+	std::vector<std::size_t> res=select_edge(v,v.DST);
     showclock("select_edge");
 	
     v.print_select_edges(res,fout);
