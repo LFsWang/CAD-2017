@@ -56,6 +56,9 @@ std::vector<std::size_t> select_edge(const VisingGraph &G,DisjoinSet &ds)
     //SPFA
     std::vector<bool> inqueue(N,false);
     std::deque<sz_t> qu;
+    dist.reserve(N);
+    prev_eid.reserve(N);
+    index.reserve(N);
     for(sz_t i=0;i<N;++i)
     {
         dist.emplace_back(INF);

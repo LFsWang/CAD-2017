@@ -56,14 +56,14 @@ inline void get_original_PxPy(std::vector<s64> &Px,std::vector<s64> &Py,const Da
 {
 	for(s32 i=1;i<=data.metal_layers;++i)
 	{
-		for(auto o:data.Obstacles[i])
+		for(const auto &o:data.Obstacles[i])
 		{
 			Px.emplace_back(o.first.x);
 			Px.emplace_back(o.second.x);
 			Py.emplace_back(o.first.y);
 			Py.emplace_back(o.second.y);
 		}
-		for(auto s:data.RoutedShape[i])
+		for(const auto &s:data.RoutedShape[i])
 		{
 			Px.emplace_back(s.first.x);
 			Px.emplace_back(s.second.x);
@@ -143,7 +143,7 @@ inline void get_xyLine_singal_layer(s32 lay,std::vector<Statemant_2D_VG> &xLine,
 {
 	std::vector<statementP1> Xstate,Ystate;
 	
-	for(auto o:data.Obstacles[lay])
+	for(const auto &o:data.Obstacles[lay])
 	{
 		u32 x1=get_dis(Px,o.first.x);
 		u32 x2=get_dis(Px,o.second.x);
@@ -155,7 +155,7 @@ inline void get_xyLine_singal_layer(s32 lay,std::vector<Statemant_2D_VG> &xLine,
 		Ystate.emplace_back(y1,x1,x2, 1,'O');
 		Ystate.emplace_back(y2,x1,x2,-1,'O');
 	}
-	for(auto o:data.RoutedShape[lay])
+	for(const auto &o:data.RoutedShape[lay])
 	{
 		u32 x1=get_dis(Px,o.first.x);
 		u32 x2=get_dis(Px,o.second.x);
