@@ -6,6 +6,7 @@
 #include<algorithm>
 #include<unordered_map>
 #include"DisjoinSet.h"
+#include"SwapLineStatement.h"
 
 struct Edge{
 	size_t ori_u;
@@ -41,14 +42,17 @@ struct VisingGraph{
 	std::vector<bool> is_pinv;
 	//建樹只需要N,G,edge,is_pinv
 	
-	std::vector<std::vector<u32>> ori_G;
 	std::vector<point3D> V_set;
 	std::vector<size_t> shrink_from;
 	std::vector<s64> Px;
 	std::vector<s64> Py;
+	std::vector<Statemant_2D_VG> xLine[10+1];
+	std::vector<Statemant_2D_VG> yLine[10+1];
+	
 	DisjoinSet DST;
 	
 	void build(const DataSet &data,bool is_not_connect);
+	void build_beta(const DataSet &data,bool is_not_connect);
 	void print_select_edges(const std::vector<std::size_t> &res,std::ofstream &fout);
 };
 
