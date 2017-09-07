@@ -1,6 +1,7 @@
 #include "DataLoader.h"
 #include "BuildVisingGraph.h"
 #include "DisjoinSet.h"
+#include "Queue.h"
 
 #include<ctime>
 #include<functional>
@@ -11,7 +12,6 @@
 #include<tuple>
 #include<unordered_set>
 #include<stack>
-#include<queue>
 
 using std::cout;
 using std::endl;
@@ -55,7 +55,7 @@ std::vector<std::size_t> select_edge(const VisingGraph &G,DisjoinSet &ds)
 
     //SPFA
     std::vector<bool> inqueue(N,false);
-    std::deque<sz_t> qu;
+    Queue<sz_t> qu;
     dist.reserve(N);
     prev_eid.reserve(N);
     index.reserve(N);
@@ -68,11 +68,11 @@ std::vector<std::size_t> select_edge(const VisingGraph &G,DisjoinSet &ds)
         {
             dist[i] = 0;
             index[i]=i;
-            qu.emplace_back(i);
+            qu.push_back(i);
             inqueue[i]=true;
         }
     }
-
+    showclock(" :INIT FIND EDGE");
     sz_t v;
     while( !qu.empty() )
     {
@@ -92,9 +92,9 @@ std::vector<std::size_t> select_edge(const VisingGraph &G,DisjoinSet &ds)
                 if( !inqueue[e] )
                 {
                     if( !qu.empty() && dist[e] <= dist[qu.front()] )
-                        qu.emplace_front(e);
+                        qu.push_front(e);
                     else
-                        qu.emplace_back(e);
+                        qu.push_back(e);
                     inqueue[e]=true;
                 }
             }
@@ -117,7 +117,8 @@ std::vector<std::size_t> select_edge(const VisingGraph &G,DisjoinSet &ds)
     std::sort(CrossEdge.begin(),CrossEdge.end());
     showclock(" :Find CrossEdge");
 
-    std::vector<sz_t> SelectKEdge;
+    std::vector<sz_t> &SelectKEdge = qu.shift();
+    SelectKEdge.clear();
     ds.init(N);
     for(const auto &TUS:CrossEdge)
     {
