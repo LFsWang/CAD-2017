@@ -39,6 +39,7 @@ inline void showclock(const char *str=nullptr)
     last = now;
 }
 
+bool g_isconnected;
 std::vector<std::size_t> select_edge(const VisingGraph &G,DisjoinSet &ds)
 {
     using sz_t = std::size_t;
@@ -52,6 +53,7 @@ std::vector<std::size_t> select_edge(const VisingGraph &G,DisjoinSet &ds)
     std::vector<u64>  dist;
     std::vector<sz_t> prev_eid;
     std::vector<sz_t> index;
+    g_isconnected = false;
 
     //SPFA
     std::vector<bool> inqueue(N,false);
@@ -179,14 +181,22 @@ std::vector<std::size_t> select_edge(const VisingGraph &G,DisjoinSet &ds)
     showclock(" :Kruskal 2");
 
     std::stack<sz_t> stack;
+    sz_t ping_num = 0;
+    g_isconnected = true;
     for(sz_t i=0;i<N;++i)
     {
+        if( G.is_pinv[i] )ping_num++;
+        if( G.is_pinv[i] && deg[i]==0 ) g_isconnected = false;
         if( !G.is_pinv[i] && deg[i]==1 )
         {
             deg[i]--;
             stack.emplace(i);
         }
     }
+    if( ping_num <= 1 )g_isconnected = true;
+
+    if( !g_isconnected )
+        std::cerr<<" ### EXIST PING NOT CONNECT!"<<endl;
 
     std::cout<<"Before reduce E="<<used_eid.size()<<",stack hold:"<<stack.size()<<std::endl;
     while( !stack.empty() )
