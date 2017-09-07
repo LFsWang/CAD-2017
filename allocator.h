@@ -1,3 +1,4 @@
+#include<cstdlib>
 std::size_t map_allocator_max;
 
 template<typename T>
