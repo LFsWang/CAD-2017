@@ -264,6 +264,15 @@ int main(int argc,char *argv[])
 	std::vector<std::size_t> res=select_edge(v,v.DST);
     showclock("select_edge");
 	
+	if(!g_isconnected)
+	{
+		v.build_beta(d,1);
+		showclock("VisingGraph build beta");
+
+		res = select_edge(v,v.DST);
+		showclock("select_edge beta");
+	}
+	
     v.print_select_edges(res,fout);
 	
     showclock("DONE!!!");

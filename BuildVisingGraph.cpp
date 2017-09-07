@@ -3,8 +3,11 @@
 #include"SwapLineP1.h"
 #include"BinaryIndexTree.h"
 #include"DisjoinSet.h"
+#include"allocator.h"
 
 const int debug_mode=0;
+
+typedef std::set<u32,std::less<u32>,map_allocator<u32>> jinkela_set;
 
 #include<future>
 using std::ref;
@@ -80,12 +83,9 @@ inline void get_original_PxPy(std::vector<s64> &Px,std::vector<s64> &Py,const Da
 	set_dis(Py);
 }
 
-inline void get_Line_swap_line(std::vector<Statemant_2D_VG> &line,std::vector<Statemant_2D_VG> &sline,std::vector<Statemant_2D_VG> &oline,std::vector<statementP1> &state,u32 l,u32 r,u32 al,u32 ar,u32 bl,u32 br)
+inline void get_Line_swap_line(swape_line_P1 &SL,std::vector<Statemant_2D_VG> &line,std::vector<Statemant_2D_VG> &sline,std::vector<Statemant_2D_VG> &oline,std::vector<statementP1> &state,u32 l,u32 r,u32 al,u32 ar,u32 bl,u32 br)
 {
 	sort(state.begin(),state.end());
-	
-	swape_line_P1 SL;
-	SL.init(r-l+1);
 	
 	for(const auto &st:state)
 	{
@@ -140,7 +140,7 @@ inline void get_Line_swap_line(std::vector<Statemant_2D_VG> &line,std::vector<St
 	}
 }
 
-inline void get_xyLine_singal_layer(s32 lay,std::vector<Statemant_2D_VG> &xLine,std::vector<Statemant_2D_VG> &yLine,std::vector<Statemant_2D_VG> &sxLine,std::vector<Statemant_2D_VG> &syLine,std::vector<Statemant_2D_VG> &oxLine,std::vector<Statemant_2D_VG> &oyLine,const DataSet &data,const std::vector<s64> &Px,const std::vector<s64> &Py)
+inline void get_xyLine_singal_layer(s32 lay,std::vector<Statemant_2D_VG> &xLine,std::vector<Statemant_2D_VG> &yLine,std::vector<Statemant_2D_VG> &sxLine,std::vector<Statemant_2D_VG> &syLine,std::vector<Statemant_2D_VG> &oxLine,std::vector<Statemant_2D_VG> &oyLine,const DataSet &data,const std::vector<s64> &Px,const std::vector<s64> &Py,swape_line_P1 &SLX,swape_line_P1 &SLY)
 {
 	std::vector<statementP1> Xstate,Ystate;
 	
@@ -174,8 +174,8 @@ inline void get_xyLine_singal_layer(s32 lay,std::vector<Statemant_2D_VG> &xLine,
 	u32 ux = get_dis(Px,data.boundary.second.x);
 	u32 uy = get_dis(Py,data.boundary.second.y);
 	
-	std::future<void> fx = std::async(get_Line_swap_line,ref(xLine),ref(sxLine),ref(oxLine),ref(Xstate),0,Py.size()-1,lx,ux,ly,uy);
-	std::future<void> fy = std::async(get_Line_swap_line,ref(yLine),ref(syLine),ref(oyLine),ref(Ystate),0,Px.size()-1,ly,uy,lx,ux);
+	std::future<void> fx = std::async(get_Line_swap_line,ref(SLX),ref(xLine),ref(sxLine),ref(oxLine),ref(Xstate),0,Py.size()-1,lx,ux,ly,uy);
+	std::future<void> fy = std::async(get_Line_swap_line,ref(SLY),ref(yLine),ref(syLine),ref(oyLine),ref(Ystate),0,Px.size()-1,ly,uy,lx,ux);
 	
 	fx.wait();
 	fy.wait();
@@ -187,9 +187,15 @@ inline void get_xyLine_singal_layer(s32 lay,std::vector<Statemant_2D_VG> &xLine,
 inline void get_xyLine_singal_layer_future(std::vector<Statemant_2D_VG> *xLine,std::vector<Statemant_2D_VG> *yLine,std::vector<Statemant_2D_VG> *sxLine,std::vector<Statemant_2D_VG> *syLine,std::vector<Statemant_2D_VG> *oxLine,std::vector<Statemant_2D_VG> *oyLine,const DataSet &data,const std::vector<s64> &Px,const std::vector<s64> &Py)
 {
 	std::vector<std::future<void>> task;
+	
+	swape_line_P1 SLX[10+1];
+	swape_line_P1 SLY[10+1];
+	
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
-		task.emplace_back(std::async(get_xyLine_singal_layer,lay,ref(xLine[lay]),ref(yLine[lay]),ref(sxLine[lay]),ref(syLine[lay]),ref(oxLine[lay]),ref(oyLine[lay]),ref(data),ref(Px),ref(Py)));
+		SLX[lay].init(Py.size());
+		SLY[lay].init(Px.size());
+		task.emplace_back(std::async(get_xyLine_singal_layer,lay,ref(xLine[lay]),ref(yLine[lay]),ref(sxLine[lay]),ref(syLine[lay]),ref(oxLine[lay]),ref(oyLine[lay]),ref(data),ref(Px),ref(Py),ref(SLX[lay]),ref(SLY[lay])));
 	}
 	for(auto &f:task)
 	{
@@ -322,6 +328,8 @@ inline void set_3d_VG_point(std::vector<std::pair<u32,u32>> &S,s32 la1,s32 la2,c
 	
 	for(const auto &i:P1[la1]) S.emplace_back(i);
 	
+	state.reserve(S.size()+data.Obstacles[la2].size()*2);
+	
 	for(const auto &p:S)
 	{
 		state.emplace_back(2,p.first,p.second);
@@ -347,6 +355,7 @@ inline void set_3d_VG_point(std::vector<std::pair<u32,u32>> &S,s32 la1,s32 la2,c
 	ST.init(Py.size()+2);
 	
 	std::vector<std::pair<u32,u32>> nS;
+	nS.reserve(S.size());
 	
 	for(const auto &st:state)
 	{
@@ -407,7 +416,7 @@ void project_point_on_all_layer(s32 l,s32 r,const DataSet &data,std::vector<std:
 }
 //*/
 	
-void one_way_point_project_swap_line(const Statemant_2D_VG &st,std::set<u32> &ST,std::vector<std::pair<u32,u32>> &S2,u32 L,u32 R,bool is_rev=0)
+void one_way_point_project_swap_line(const Statemant_2D_VG &st,jinkela_set &ST,std::vector<std::pair<u32,u32>> &S2,u32 L,u32 R,bool is_rev=0)
 {
 	if(st.type==2)
 	{
@@ -456,7 +465,8 @@ void single_layer_point_project(const std::vector<std::pair<u32,u32>> &S,std::ve
 	sort(Xstate.begin(),Xstate.end());
 	sort(Ystate.begin(),Ystate.end());
 	
-	std::set<u32> ST,RST;
+	//std::cerr<<map_allocator_max<<endl;
+	jinkela_set ST,RST;
 	
 	for(size_t i=0;i<Xstate.size();++i)
 	{
@@ -467,16 +477,15 @@ void single_layer_point_project(const std::vector<std::pair<u32,u32>> &S,std::ve
 			one_way_point_project_swap_line(Xstate[ri],RST,S2,x1,x2);
 	}
 	
-	ST.clear();
-	RST.clear();
+	jinkela_set ST2,RST2;
 	
 	for(size_t i=0;i<Ystate.size();++i)
 	{
 		size_t ri=Ystate.size()-i-1;
 		//if(Ystate[i].seg_type!='B'||Ystate[i].type!=3)
-			one_way_point_project_swap_line(Ystate[i],ST,S2,y1,y2,1);
+			one_way_point_project_swap_line(Ystate[i],ST2,S2,y1,y2,1);
 		//if(Ystate[ri].seg_type!='B'||Ystate[ri].type!=1)
-			one_way_point_project_swap_line(Ystate[ri],RST,S2,y1,y2,1);
+			one_way_point_project_swap_line(Ystate[ri],RST2,S2,y1,y2,1);
 	}
 	// to do thread
 }
@@ -491,6 +500,7 @@ inline void point_project_to_XYLine_singal_layer(std::vector<std::pair<u32,u32>>
 	*/
 	
 	single_layer_point_project(P1,xLine,yLine,P2,x1,x2,y1,y2);
+	
 	for(const auto &p:P1)
 	{
 		P2.emplace_back(p);
@@ -509,6 +519,7 @@ inline void point_project_to_XYLine_singal_layer(std::vector<std::pair<u32,u32>>
 	
 	set_dis(P2);
 	P1.clear();
+	P1.reserve(P2.size());
 	for(const auto &p:P2)
 	{
 		if(x1<=p.first&&p.first<=x2&&y1<=p.second&&p.second<=y2)
@@ -524,9 +535,17 @@ inline void point_project_to_XYLine(std::vector<std::pair<u32,u32>> *P1,std::vec
 	u32 y1=get_dis(Py,data.boundary.first.y);
 	u32 y2=get_dis(Py,data.boundary.second.y);
 	
+	map_allocator_max = 0;
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		map_allocator_max = std::max(P1[lay].size(),map_allocator_max);
+	}
+	map_allocator_max += 4;
+	
 	std::vector<std::future<void>> task;
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
+		P2[lay].reserve(P1[lay].size()*4+P3[lay].size()+P4[lay].size());
 		task.emplace_back(std::async(point_project_to_XYLine_singal_layer,ref(P1[lay]),ref(P2[lay]),ref(P3[lay]),ref(P4[lay]),ref(xLine[lay]),ref(yLine[lay]),x1,x2,y1,y2));
 	}
 	for(auto &f:task)
@@ -535,7 +554,7 @@ inline void point_project_to_XYLine(std::vector<std::pair<u32,u32>> *P1,std::vec
 	}
 }
 
-void SO_point_project_swap_line(const Statemant_2D_VG &st,std::set<u32> &ST,std::vector<std::pair<u32,u32>> &S2,bool is_rev=0)
+void SO_point_project_swap_line(const Statemant_2D_VG &st,jinkela_set &ST,std::vector<std::pair<u32,u32>> &S2,bool is_rev=0)
 {
 	if(st.type==2)
 	{
@@ -606,7 +625,7 @@ inline void point_project_to_soxyLine_singal_layer(const std::vector<std::pair<u
 	sort(LYstate.begin(),LYstate.end());
 	sort(RYstate.begin(),RYstate.end());
 	
-	std::set<u32> XST,XRST,YST,YRST;
+	jinkela_set XST,XRST,YST,YRST;
 	for(const auto &st:LXstate)
 	{
 		SO_point_project_swap_line(st,XST,S2);
@@ -634,9 +653,17 @@ inline void point_project_to_soxyLine_singal_layer(const std::vector<std::pair<u
 
 inline void point_project_to_soxyLine(std::vector<std::pair<u32,u32>> *P1,std::vector<std::pair<u32,u32>> *P2,const DataSet &data,std::vector<Statemant_2D_VG> *xLine,std::vector<Statemant_2D_VG> *yLine,std::vector<Statemant_2D_VG> *pxLine,std::vector<Statemant_2D_VG> *pyLine)
 {
+	map_allocator_max = 0;
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		map_allocator_max = std::max(map_allocator_max,P1[lay].size());
+	}
+	map_allocator_max += 4;
+	
 	std::vector<std::future<void>> task;
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
+		P2[lay].reserve(P1[lay].size()*4);
 		task.emplace_back(std::async(point_project_to_soxyLine_singal_layer,ref(P1[lay]),ref(xLine[lay]),ref(yLine[lay]),ref(pxLine[lay]),ref(pyLine[lay]),ref(P2[lay])));
 	}
 	for(auto &f:task)
@@ -647,7 +674,6 @@ inline void point_project_to_soxyLine(std::vector<std::pair<u32,u32>> *P1,std::v
 
 inline void set_Pv(const std::vector<point3D> &V_set,s32 lay,std::vector<std::pair<u32,u32>> *P1,std::vector<size_t> *Pv)
 {
-	Pv[lay].reserve(P1[lay].size());
 	for(const auto &p:P1[lay])
 	{
 		Pv[lay].emplace_back(get_dis(V_set,point3D(p.first,p.second,lay)));
@@ -678,6 +704,7 @@ inline void put_the_point_number(s32 metal_layers,std::vector<point3D> &V_set,st
 	std::vector<std::future<void>> task;
 	for(s32 lay=1;lay<=metal_layers;++lay)
 	{
+		Pv[lay].reserve(P1[lay].size());
 		task.emplace_back(std::async(set_Pv,ref(V_set),lay,P1,Pv));
 	}
 	for(auto &f:task)
@@ -785,7 +812,7 @@ inline void merge_shape_point_swap_line(DisjoinSet &DST,std::vector<Statemant_2D
 {
 	sort(state.begin(),state.end());
 	
-	std::map<u32,u32> ST;
+	std::map<u32,u32,std::less<u32>,map_allocator<std::pair<u32,u32>>> ST;
 	
 	BIT BIST;
 	BIST.init(bit_size+2);
@@ -804,7 +831,7 @@ inline void merge_shape_point_swap_line(DisjoinSet &DST,std::vector<Statemant_2D
 				}
 				else
 				{
-					ST[st.b1]=st.b2;
+					ST.emplace(st.b1,st.b2);
 				}
 			}
 		}
@@ -868,6 +895,13 @@ inline void merge_same_shape_point_singal_layer(DisjoinSet &DST,std::vector<Stat
 
 inline void merge_same_shape_point(DisjoinSet &DST,std::vector<Statemant_2D_VG> *xLine,std::vector<Statemant_2D_VG> *yLine,std::vector<size_t> *Pv,const std::vector<point3D> &V_set,const std::vector<s64> &Px,const std::vector<s64> &Py,s32 metal_layers)
 {
+	map_allocator_max = 0;
+	for(s32 lay=1;lay<=metal_layers;++lay)
+	{
+		map_allocator_max = std::max(Pv[lay].size(),map_allocator_max);
+	}
+	map_allocator_max += 4;
+	
 	std::vector<std::future<void>> task;
 	for(s32 lay=1;lay<=metal_layers;++lay)
 	{
@@ -908,7 +942,7 @@ inline void build_2D_edge_swape_line(const std::vector<size_t> &shrink_from,std:
 {
 	sort(state.begin(),state.end());
 	
-	std::map<u32,u32> ST;
+	std::map<u32,u32,std::less<u32>,map_allocator<std::pair<u32,u32>>> ST;
 	
 	u8 edge_type = is_rev ? 'V' : 'H';
 	
@@ -928,7 +962,7 @@ inline void build_2D_edge_swape_line(const std::vector<size_t> &shrink_from,std:
 			}
 			else
 			{
-				ST[st.b1] = st.b2;
+				ST.emplace(st.b1,st.b2);
 			}
 		}
 		else
@@ -941,13 +975,8 @@ inline void build_2D_edge_swape_line(const std::vector<size_t> &shrink_from,std:
 	
 }
 
-inline void build_2D_edge_singal_layer(s32 lay,const DataSet &data,const std::vector<size_t> &shrink_from,std::vector<size_t> *Pv,std::vector<s64> &Px,std::vector<s64> &Py,std::vector<Edge> &edgeX,std::vector<Edge> &edgeY,const std::vector<point3D> &V_set)
+inline void build_2D_edge_singal_layer(s32 lay,const DataSet &data,const std::vector<size_t> &shrink_from,std::vector<size_t> *Pv,std::vector<s64> &Px,std::vector<s64> &Py,std::vector<Edge> &edgeX,std::vector<Edge> &edgeY,const std::vector<point3D> &V_set,std::vector<Statemant_2D_VG> &Xstate,std::vector<Statemant_2D_VG> &Ystate)
 {
-	std::vector<Statemant_2D_VG> Xstate;
-	std::vector<Statemant_2D_VG> Ystate;
-	
-	Xstate.reserve(data.Obstacles[lay].size()*2+Pv[lay].size());
-	Ystate.reserve(data.Obstacles[lay].size()*2+Pv[lay].size());
 	
 	for(auto p:Pv[lay])
 	{
@@ -975,9 +1004,6 @@ inline void build_2D_edge_singal_layer(s32 lay,const DataSet &data,const std::ve
 		}
 	}
 	
-	edgeX.reserve(Pv[lay].size()*4);
-	edgeY.reserve(Pv[lay].size()*4);
-	
 	std::future<void> XF(std::async(build_2D_edge_swape_line,ref(shrink_from),ref(Xstate),ref(edgeX),0));
 	std::future<void> YF(std::async(build_2D_edge_swape_line,ref(shrink_from),ref(Ystate),ref(edgeY),1));
 	
@@ -990,25 +1016,34 @@ inline void build_2D_edge_singal_layer(s32 lay,const DataSet &data,const std::ve
 
 inline void build_2D_edge(const DataSet &data,const std::vector<size_t> &shrink_from,std::vector<size_t> *Pv,std::vector<s64> &Px,std::vector<s64> &Py,std::vector<Edge> &edge,const std::vector<point3D> &V_set)
 {
+	map_allocator_max = 0;
+	for(s32 lay=1;lay<=data.metal_layers;++lay)
+	{
+		map_allocator_max = std::max(Pv[lay].size(),map_allocator_max);
+	}
+	map_allocator_max += 4;
+	
 	std::vector<std::future<void>> task;
 	
 	std::vector<Edge> edgeX[10+1],edgeY[10+1];
+	std::vector<Statemant_2D_VG> Xstate[10+1];
+	std::vector<Statemant_2D_VG> Ystate[10+1];
+	
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
-		task.emplace_back(std::async(build_2D_edge_singal_layer,lay,ref(data),ref(shrink_from),Pv,ref(Px),ref(Py),ref(edgeX[lay]),ref(edgeY[lay]),ref(V_set)));
+		Xstate[lay].reserve(data.Obstacles[lay].size()*2+Pv[lay].size());
+		Ystate[lay].reserve(data.Obstacles[lay].size()*2+Pv[lay].size());
+		
+		edgeX[lay].reserve(Pv[lay].size()*4);
+		edgeY[lay].reserve(Pv[lay].size()*4);
+		
+		task.emplace_back(std::async(build_2D_edge_singal_layer,lay,ref(data),ref(shrink_from),Pv,ref(Px),ref(Py),ref(edgeX[lay]),ref(edgeY[lay]),ref(V_set),ref(Xstate[lay]),ref(Ystate[lay])));
 		//build_2D_edge_singal_layer(lay,data,shrink_from,V,Px,Py,edgeX[lay],edgeY[lay],V_set);
 	}
-	//size_t cnt=0;
+	
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		task[lay-1].wait();
-		//cnt+=edgeX[lay].size();
-		//cnt+=edgeY[lay].size();
-	}
-	//edge.reserve(cnt*2);
-	for(s32 lay=1;lay<=data.metal_layers;++lay)
-	{
-		//task[lay-1].wait();
 		for(auto e:edgeX[lay])
 		{
 			edge.emplace_back(e);
