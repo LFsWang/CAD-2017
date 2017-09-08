@@ -6,4 +6,4 @@ case*
 eval
 *.out
 *.svg
-net_open_finder
+net_open_finder*

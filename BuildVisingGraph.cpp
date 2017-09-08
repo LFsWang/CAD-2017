@@ -4,6 +4,7 @@
 #include"BinaryIndexTree.h"
 #include"DisjoinSet.h"
 #include"allocator.h"
+#include<omp.h>
 
 const int debug_mode=0;
 
@@ -14,7 +15,7 @@ using std::ref;
 
 #include<ctime>
 
-inline void showclock(const char *str=nullptr)
+inline void _showclock(const char *str=nullptr)
 {
 #ifdef _WIN32
     long long CL_PER_SEC = CLOCKS_PER_SEC;//1000;
@@ -33,6 +34,22 @@ inline void showclock(const char *str=nullptr)
     if(str)printf("%s ,",str);
     printf("Time:");show_time(now);printf("\t(");
     long long diff = now - last;
+    show_time(diff);printf(")\n");
+    last = now;
+}
+
+inline void showclock(const char *str=nullptr)
+{
+	static double begin = omp_get_wtime();
+    static double last = 0;
+    auto show_time = [&](double time){
+        printf(" %fs ",time);
+    };
+    
+    double now = omp_get_wtime();//std::clock();
+    if(str)printf("%s ,",str);
+    printf("Time:");show_time(now-begin);printf("\t(");
+    double diff = now - last;
     show_time(diff);printf(")\n");
     last = now;
 }
@@ -1178,7 +1195,7 @@ inline void set_edge_and_graph(s64 viacost,size_t N,std::vector<std::vector<size
 	{
 		task.emplace_back(std::async(set_edge,edge_cnt,i==6?(edge.size()):(edge_cnt+edge_div),viacost,ref(edge),ref(Px),ref(Py),ref(V_set)));
 		edge_cnt+=edge_div;
-		std::cerr<<"edge_cnt: "<<edge_cnt<<'\n';
+		if(debug_mode) std::cerr<<"edge_cnt: "<<edge_cnt<<'\n';
 	}
 	
 	G.clear();
@@ -1242,11 +1259,12 @@ void VisingGraph::build(const DataSet &data,bool is_not_connect=0)
 	showclock("get_original_P1");
 	
 	//*
+	if(debug_mode)
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		std::cerr<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
 	}
-	std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	if(debug_mode) std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
 	//*/
 	
 	if(is_not_connect){
@@ -1261,35 +1279,38 @@ void VisingGraph::build(const DataSet &data,bool is_not_connect=0)
 	showclock("project_point_on_all_layer");
 	
 	//*
+	if(debug_mode)
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		std::cerr<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
 	}
-	std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	if(debug_mode) std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
 	//*/
 	
 	//*
 	/*point_project_to_soxyLine(P1,P3,data,xLine,yLine,sxLine,syLine);
 	showclock("shape: point_project_to_soxyLine");
 	
+	if(debug_mode)
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		std::cerr<<"P3["<<lay<<"].size(): "<<P3[lay].size()<<endl;
 	}
-	std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";*/
+	if(debug_mode) std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";*/
 	
 	point_project_to_soxyLine(P1,P4,data,xLine,yLine,oxLine,oyLine);
 	showclock("obstacle: point_project_to_soxyLine");
 	
+	if(debug_mode)
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		std::cerr<<"P4["<<lay<<"].size(): "<<P4[lay].size()<<endl;
 	}
-	std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	if(debug_mode) std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
 	//*/
 	
 	point_project_to_XYLine(P1,P2,P3,P4,data,xLine,yLine,Px,Py);
-	showclock("point_project_to_XYLine");
+	if(debug_mode) showclock("point_project_to_XYLine");
 	
 	
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
@@ -1301,11 +1322,12 @@ void VisingGraph::build(const DataSet &data,bool is_not_connect=0)
 	}
 	
 	//*
+	if(debug_mode)
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		std::cerr<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
 	}
-	std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	if(debug_mode) std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
 	//*/
 	
 	std::vector<size_t> Pv[LIMIT_LAYER];
@@ -1341,6 +1363,7 @@ void VisingGraph::build(const DataSet &data,bool is_not_connect=0)
 	build_2D_edge(data,shrink_from,Pv,Px,Py,edge,V_set);
 	showclock("build_2D_edge");
 	
+	if(debug_mode)
 	std::cerr<<"edge size: "<<edge.size()<<'\n';
 	
 	set_edge_and_graph(data.viacost,N,G,edge,shrink_from,Px,Py,V_set);
@@ -1555,7 +1578,10 @@ inline void build_2D_VG_point(const DataSet &data,std::vector<std::pair<u32,u32>
 	for(s32 i=0;i<data.metal_layers;++i)
 	{
 		taskX[i].wait();
+		
+		if(debug_mode)
 		std::cerr<<"P2["<<i+1<<"].size(): "<<P2[i+1].size()<<endl;
+	
 		for(const auto &p:P2[i+1])
 		{
 			P1[i+1].emplace_back(p);
@@ -1563,7 +1589,10 @@ inline void build_2D_VG_point(const DataSet &data,std::vector<std::pair<u32,u32>
 		std::vector<std::pair<u32,u32>>().swap(P2[i+1]);
 		
 		taskY[i].wait();
+		
+		if(debug_mode)
 		std::cerr<<"P3["<<i+1<<"].size(): "<<P3[i+1].size()<<endl;
+	
 		for(const auto &p:P3[i+1])
 		{
 			P1[i+1].emplace_back(p);
@@ -1572,6 +1601,8 @@ inline void build_2D_VG_point(const DataSet &data,std::vector<std::pair<u32,u32>
 		
 		set_dis(P1[i+1]);
 	}
+	
+	if(debug_mode)
 	std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
 }
 
@@ -1590,6 +1621,7 @@ void VisingGraph::build_beta(const DataSet &data,bool is_not_connect)
 	showclock("get_original_P1");
 	
 	//*
+	if(debug_mode)
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		std::cerr<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
@@ -1601,32 +1633,35 @@ void VisingGraph::build_beta(const DataSet &data,bool is_not_connect)
 	showclock("project_point_on_all_layer_beta");
 	
 	//*
+	if(debug_mode)
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		std::cerr<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
 	}
-	std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	if(debug_mode) std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
 	//*/
 	
 	point_project_to_XYLine(P1,P2,P3,P4,data,xLine,yLine,Px,Py);
 	showclock("point_project_to_XYLine");
 	
 	//*
+	if(debug_mode)
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		std::cerr<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
 	}
-	std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	if(debug_mode) std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
 	//*/
 	
 	recursive_set_3d_VG_point(1,data.metal_layers,data,P1,Px,Py);
 	showclock("recursive_set_3d_VG_point");
 	//*
+	if(debug_mode)
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		std::cerr<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
 	}
-	std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	if(debug_mode) std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
 	//*/
 	
 	build_2D_VG_point(data,P1,P2,Px,Py);
@@ -1636,11 +1671,12 @@ void VisingGraph::build_beta(const DataSet &data,bool is_not_connect)
 	showclock("point_project_to_XYLine");
 	
 	//*
+	if(debug_mode)
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		std::cerr<<"P1["<<lay<<"].size(): "<<P1[lay].size()<<endl;
 	}
-	std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
+	if(debug_mode) std::cerr<<"wwwwwwwwwwwwwwwwwwwwwwwwwwww\n";
 	//*/
 	
 	std::vector<size_t> Pv[LIMIT_LAYER];

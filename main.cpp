@@ -12,11 +12,12 @@
 #include<tuple>
 #include<unordered_set>
 #include<stack>
+#include<omp.h>
 
 using std::cout;
 using std::endl;
 
-inline void showclock(const char *str=nullptr)
+inline void _showclock(const char *str=nullptr)
 {
 #ifdef _WIN32
     long long CL_PER_SEC = CLOCKS_PER_SEC;//1000;
@@ -35,6 +36,22 @@ inline void showclock(const char *str=nullptr)
     if(str)printf("%s ,",str);
     printf("Time:");show_time(now);printf("\t(");
     long long diff = now - last;
+    show_time(diff);printf(")\n");
+    last = now;
+}
+
+inline void showclock(const char *str=nullptr)
+{
+	static double begin = omp_get_wtime();
+    static double last = 0;
+    auto show_time = [&](double time){
+        printf(" %fs ",time);
+    };
+    
+    double now = omp_get_wtime();//std::clock();
+    if(str)printf("%s ,",str);
+    printf("Time:");show_time(now-begin);printf("\t(");
+    double diff = now - last;
     show_time(diff);printf(")\n");
     last = now;
 }
@@ -221,6 +238,20 @@ std::vector<std::size_t> select_edge(const VisingGraph &G,DisjoinSet &ds)
     std::copy(used_eid.begin(),used_eid.end(),std::back_inserter(SelectKEdge));
     std::cout<<"After reduce E="<<SelectKEdge.size()<<std::endl;
     showclock(" :Reduce Edge");
+	
+	u64 cost = 0;
+	for(auto e:SelectKEdge)
+	{
+		cost += G.edge[e].cost;
+	}
+	
+	std::cout<<"cost = "<<cost<<std::endl;
+	
+	/*if(min({cost/3558.0,cost/65559.0,cost/755324.0,cost/1273945.0,cost/9656.0,cost/21325.0,cost/1567931.0,cost/5328084.0})>=0.1)
+	{
+		g_isconnected = false;
+		std::cerr<<" ### NEED REBUILD!"<<endl;
+	}*/
 
     return SelectKEdge;
 }
