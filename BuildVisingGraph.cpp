@@ -4,6 +4,7 @@
 #include"BinaryIndexTree.h"
 #include"DisjoinSet.h"
 #include"allocator.h"
+#include"showtime.h"
 #include<omp.h>
 
 const int debug_mode=0;
@@ -12,47 +13,6 @@ typedef std::set<u32,std::less<u32>,map_allocator<u32>> jinkela_set;
 
 #include<future>
 using std::ref;
-
-#include<ctime>
-
-inline void _showclock(const char *str=nullptr)
-{
-#ifdef _WIN32
-    long long CL_PER_SEC = CLOCKS_PER_SEC;//1000;
-#else
-    long long CL_PER_SEC = CLOCKS_PER_SEC;//1000000;//test on centos
-#endif
-    static long long last = 0;
-    auto show_time = [&](long long time){
-        long long ms = time%CL_PER_SEC; time/=CL_PER_SEC;
-        long long sec = time%60;  time/=60;
-        long long min = time%60;  time/=60;
-        printf("%2llu:%02llu:%02llu %06llu",time,min,sec,ms);
-    };
-    
-    long long now = std::clock();
-    if(str)printf("%s ,",str);
-    printf("Time:");show_time(now);printf("\t(");
-    long long diff = now - last;
-    show_time(diff);printf(")\n");
-    last = now;
-}
-
-inline void showclock(const char *str=nullptr)
-{
-	static double begin = omp_get_wtime();
-    static double last = 0;
-    auto show_time = [&](double time){
-        printf(" %fs ",time);
-    };
-    
-    double now = omp_get_wtime();//std::clock();
-    if(str)printf("%s ,",str);
-    printf("Time:");show_time(now-begin);printf("\t(");
-    double diff = now - last;
-    show_time(diff);printf(")\n");
-    last = now;
-}
 
 template<typename T>
 inline void set_dis(T &dis)
@@ -254,6 +214,7 @@ inline void get_PxPy(std::vector<s64> &Px,std::vector<s64> &Py,const DataSet &da
 	set_dis(nPx);
 	set_dis(nPy);
 	
+	#pragma omp parallel for num_threads(data.metal_layers)
 	for(s32 lay=1;lay<=data.metal_layers;++lay)
 	{
 		for(auto &i:xLine[lay])
@@ -946,9 +907,14 @@ inline size_t shrink_point(std::vector<size_t> &shrink_from,std::vector<bool> &i
 	is_pinv.clear();
 	is_pinv.resize(tmp.size());
 	
+	#pragma omp parallel for num_threads(8)
 	for(size_t i=0;i<sz;++i)
 	{
 		shrink_from[i]=get_dis(tmp,shrink_from[i]);
+	}
+	
+	for(size_t i=0;i<sz;++i)
+	{
 		is_pinv[shrink_from[i]] = is_pinv[shrink_from[i]] || ori_is_P[i];
 	}
 	
@@ -1205,6 +1171,7 @@ inline void set_edge_and_graph(s64 viacost,size_t N,std::vector<std::vector<size
 	{
 		g.reserve(6);
 	}
+	
 	for(size_t i=0;i<edge.size();++i)
 	{
 		auto &e=edge[i];
