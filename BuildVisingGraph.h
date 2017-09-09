@@ -13,9 +13,9 @@ struct Edge{
 	size_t ori_v;
 	u8 type;
 	//建樹只需要u,v,cost
+	u32 cost;
 	size_t u;
 	size_t v;
-	u32 cost;
 	Edge(size_t ori_u,size_t ori_v,u8 type):ori_u(ori_u),ori_v(ori_v),type(type){}
 };
 

@@ -912,7 +912,7 @@ inline size_t shrink_point(std::vector<size_t> &shrink_from,std::vector<bool> &i
 	{
 		shrink_from[i]=get_dis(tmp,shrink_from[i]);
 	}
-	
+		
 	for(size_t i=0;i<sz;++i)
 	{
 		is_pinv[shrink_from[i]] = is_pinv[shrink_from[i]] || ori_is_P[i];
@@ -1166,7 +1166,6 @@ inline void set_edge_and_graph(s64 viacost,size_t N,std::vector<std::vector<size
 	
 	G.clear();
 	G.resize(N);
-	
 	for(auto &g:G)
 	{
 		g.reserve(6);
@@ -1321,8 +1320,8 @@ void VisingGraph::build(const DataSet &data,bool is_not_connect=0)
 	std::cerr<<N<<' '<<V_set.size()<<endl;
 	
 	edge.clear();
-	edge.reserve(N*12);
-	showclock("edge.reserve(N*12)");
+	edge.reserve(V_set.size()*12);
+	showclock("edge.reserve(V_set.size()*12)");
 	
 	build_via_edge(data,shrink_from,Pv,Px,Py,edge,V_set);
 	showclock("build_via_edge");
@@ -1676,8 +1675,8 @@ void VisingGraph::build_beta(const DataSet &data,bool is_not_connect)
 	std::cerr<<N<<' '<<V_set.size()<<endl;
 	
 	edge.clear();
-	edge.reserve(N*12);
-	showclock("edge.reserve(N*12)");
+	edge.reserve(V_set.size()*12);
+	showclock("edge.reserve(V_set.size()*12)");
 	
 	build_via_edge(data,shrink_from,Pv,Px,Py,edge,V_set);
 	showclock("build_via_edge");
