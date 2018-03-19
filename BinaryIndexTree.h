@@ -1,5 +1,5 @@
 #pragma once
-
+// 7122
 struct BIT{
 	s32 n;
 	std::vector<s32> st;
